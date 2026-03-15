@@ -1,0 +1,48 @@
+{
+  "name": "better-auth-athena",
+  "version": "1.0.0",
+  "description": "A Better-Auth database adapter for @xylex-group/athena",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SuitsBooks/better-auth-athena.git"
+  },
+  "keywords": [
+    "better-auth",
+    "athena",
+    "database",
+    "adapter"
+  ],
+  "author": "",
+  "license": "MIT",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/SuitsBooks/better-auth-athena/issues"
+  },
+  "homepage": "https://github.com/SuitsBooks/better-auth-athena#readme",
+  "peerDependencies": {
+    "@xylex-group/athena": "^1.1.1",
+    "better-auth": "^1.5.5"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "@xylex-group/athena": "^1.1.1",
+    "better-auth": "^1.5.5",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3"
+  }
+}
