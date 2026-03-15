@@ -43,6 +43,9 @@
   ],
   "license": "MIT",
   "type": "module",
+  "engines": {
+    "node": ">=20.19.0"
+  },
   "bugs": {
     "url": "https://github.com/SuitsBooks/better-auth-athena/issues"
   },

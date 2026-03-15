@@ -48,6 +48,8 @@ export const auth = betterAuth({
 
 ## Development
 
+Node.js 20.19.0 or later is required for the test/build tooling.
+
 ```bash
 npm run typecheck
 npm run test
