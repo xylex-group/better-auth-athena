@@ -48,10 +48,25 @@ export const auth = betterAuth({
 
 ## Development
 
+Node.js 20.19.0 or later is required for the test/build tooling.
+
 ```bash
 npm run typecheck
+npm run test
 npm run build
 ```
+
+## CI/CD
+
+GitHub Actions runs the typecheck, test, and build steps for every pull request and push. Releases can be published to npm by creating a GitHub release after the CI workflow succeeds.
+
+## Contributing
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for setup steps and the contribution process.
+
+## Contributors
+
+See [CONTRIBUTORS.md](./CONTRIBUTORS.md) for the current list of project contributors.
 
 ## License
 
