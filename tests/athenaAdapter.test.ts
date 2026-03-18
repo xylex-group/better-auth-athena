@@ -2,7 +2,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { createAdapterFactory, createClient } = vi.hoisted(() => {
   return {
-    createAdapterFactory: vi.fn((options: { adapter: () => unknown }) => options.adapter()),
+    createAdapterFactory: vi.fn((options: { adapter: () => unknown }) =>
+      options.adapter(),
+    ),
     createClient: vi.fn(),
   };
 });
@@ -18,6 +20,26 @@ vi.mock("@xylex-group/athena", () => ({
 import { athenaAdapter } from "../src/index";
 
 type BuilderResult = { data: unknown; error: unknown };
+
+/** Adapter instance returned by our mock (createAdapterFactory returns options.adapter()). */
+type TestAdapter = {
+  create: (args: {
+    model: string;
+    data: Record<string, unknown>;
+  }) => Promise<Record<string, unknown>>;
+  update: (args: {
+    model: string;
+    update: Record<string, unknown>;
+    where: Array<{ field: string; operator: string; value: unknown }>;
+  }) => Promise<unknown>;
+  findMany: (args: {
+    model: string;
+    limit: number;
+    offset?: number;
+    select?: string[];
+    sortBy?: { field: string; direction: "asc" | "desc" };
+  }) => Promise<Record<string, unknown>[]>;
+};
 
 const createBuilder = (result: BuilderResult) => {
   const calls: Array<{ method: string; args?: unknown[] }> = [];
@@ -84,8 +106,10 @@ const createBuilder = (result: BuilderResult) => {
       calls.push({ method: "like", args: [col, val] });
       return builder;
     },
-    then: (resolve: (value: BuilderResult) => unknown, reject?: (reason: unknown) => unknown) =>
-      Promise.resolve(result).then(resolve, reject),
+    then: (
+      resolve: (value: BuilderResult) => unknown,
+      reject?: (reason: unknown) => unknown,
+    ) => Promise.resolve(result).then(resolve, reject),
   };
 
   return builder;
@@ -98,15 +122,18 @@ describe("athenaAdapter", () => {
   });
 
   it("creates records with the configured Athena client", async () => {
-    const builder = createBuilder({ data: [{ id: "1", name: "Ada" }], error: null });
+    const builder = createBuilder({
+      data: [{ id: "1", name: "Ada" }],
+      error: null,
+    });
     const from = vi.fn(() => builder);
     createClient.mockReturnValue({ from });
 
     const adapter = athenaAdapter({
-      url: "https://gateway.example.com",
+      url: "https://athena-db.com",
       apiKey: "secret",
       client: "web",
-    });
+    }) as unknown as TestAdapter;
 
     const result = await adapter.create({
       model: "users",
@@ -114,7 +141,11 @@ describe("athenaAdapter", () => {
     });
 
     expect(result).toEqual({ id: "1", name: "Ada" });
-    expect(createClient).toHaveBeenCalledWith("https://gateway.example.com", "secret", { client: "web" });
+    expect(createClient).toHaveBeenCalledWith(
+      "https://athena-db.com",
+      "secret",
+      { client: "web" },
+    );
     expect(from).toHaveBeenCalledWith("users");
     expect(builder.calls).toEqual(
       expect.arrayContaining([
@@ -130,9 +161,9 @@ describe("athenaAdapter", () => {
     createClient.mockReturnValue({ from });
 
     const adapter = athenaAdapter({
-      url: "https://gateway.example.com",
+      url: "https://athena-db.com",
       apiKey: "secret",
-    });
+    }) as unknown as TestAdapter;
 
     await adapter.update({
       model: "users",
@@ -164,9 +195,9 @@ describe("athenaAdapter", () => {
     createClient.mockReturnValue({ from });
 
     const adapter = athenaAdapter({
-      url: "https://gateway.example.com",
+      url: "https://athena-db.com",
       apiKey: "secret",
-    });
+    }) as unknown as TestAdapter;
 
     const result = await adapter.findMany({
       model: "users",
