@@ -1,5 +1,5 @@
 {
-  "name": "better-auth-athena",
+  "name": "@xylex-group/better-auth-athena",
   "version": "1.0.0",
   "description": "A better-Auth database adapter for @xylex-group/athena",
   "main": "./dist/index.cjs",

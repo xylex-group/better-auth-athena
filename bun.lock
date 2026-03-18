@@ -3,7 +3,7 @@
   "configVersion": 0,
   "workspaces": {
     "": {
-      "name": "better-auth-athena",
+      "name": "@xylex-group/better-auth-athena",
       "devDependencies": {
         "@types/node": "^25.5.0",
         "@xylex-group/athena": "^1.1.1",
