@@ -1,4 +1,9 @@
-import { createAdapterFactory, type DBAdapterDebugLogOption } from "better-auth/adapters";
+import {
+  createAdapterFactory,
+  type AdapterFactory,
+  type DBAdapterDebugLogOption,
+} from "better-auth/adapters";
+import type { BetterAuthOptions } from "better-auth";
 import { createClient, type SupabaseClient as AthenaClient } from "@xylex-group/athena";
 
 /**
@@ -99,7 +104,7 @@ type WhereClause = { field: string; operator: string; value: unknown };
  * });
  * ```
  */
-export const athenaAdapter = (config: AthenaAdapterConfig) => {
+export const athenaAdapter = (config: AthenaAdapterConfig): AdapterFactory<BetterAuthOptions> => {
   const db: AthenaClient = createClient(config.url, config.apiKey, {
     client: config.client,
   });
