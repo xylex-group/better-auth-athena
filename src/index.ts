@@ -6,6 +6,64 @@ import {
 import type { BetterAuthOptions } from "better-auth";
 import { createClient, type SupabaseClient as AthenaClient } from "@xylex-group/athena";
 
+function toSnakeCase(key: string): string {
+  // `userId` -> `user_id`, `createdAt` -> `created_at`
+  return key
+    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
+    .replace(/__/g, "_")
+    .toLowerCase();
+}
+
+function toCamelCase(key: string): string {
+  // `user_id` -> `userId`, `created_at` -> `createdAt`
+  return key.replace(/_([a-z0-9])/g, (_, ch: string) => ch.toUpperCase());
+}
+
+function hasUppercase(key: string): boolean {
+  return /[A-Z]/.test(key);
+}
+
+function mapKeys<T extends Record<string, unknown>>(
+  obj: T,
+  mapKey: (k: string) => string,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(obj)) out[mapKey(k)] = v;
+  return out;
+}
+
+function mapRowToBetterAuth<T>(row: T): T {
+  if (!row || typeof row !== "object") return row;
+  if (Array.isArray(row)) return row.map(mapRowToBetterAuth) as unknown as T;
+  return mapKeys(row as Record<string, unknown>, toCamelCase) as T;
+}
+
+function isLikelyIsoDateString(value: string): boolean {
+  // Fast-path: Better Auth commonly uses ISO-8601 timestamps for `*At` fields.
+  if (!/^\d{4}-\d{2}-\d{2}T/.test(value)) return false;
+  const ms = Date.parse(value);
+  return Number.isFinite(ms);
+}
+
+function coerceDateFields<T extends Record<string, unknown>>(data: T): T {
+  // Athena expects timestamp/timestamptz values as Date (not plain text).
+  const out: Record<string, unknown> = { ...data };
+  for (const [key, val] of Object.entries(out)) {
+    if (val == null) continue;
+    if (val instanceof Date) continue;
+    if (typeof val === "string" && (key.endsWith("At") || key === "expires") && isLikelyIsoDateString(val)) {
+      out[key] = new Date(val);
+    }
+  }
+  return out as T;
+}
+
+function toDbRecord<T extends Record<string, unknown>>(data: T): Record<string, unknown> {
+  // Better Auth uses camelCase; Athena gateway expects snake_case column names.
+  const withDbKeys = mapKeys(data, (k) => (hasUppercase(k) ? toSnakeCase(k) : k));
+  return coerceDateFields(withDbKeys);
+}
+
 /**
  * Configuration options for the Athena adapter.
  */
@@ -55,31 +113,32 @@ function applyWhere<T extends AthenaFilterBuilder>(
   operator: string,
   value: unknown,
 ): T {
+  const dbField = hasUppercase(field) ? toSnakeCase(field) : field;
   switch (operator) {
     case "eq":
-      return builder.eq(field, value) as T;
+      return builder.eq(dbField, value) as T;
     case "ne":
-      return builder.neq(field, value) as T;
+      return builder.neq(dbField, value) as T;
     case "gt":
-      return builder.gt(field, value) as T;
+      return builder.gt(dbField, value) as T;
     case "gte":
-      return builder.gte(field, value) as T;
+      return builder.gte(dbField, value) as T;
     case "lt":
-      return builder.lt(field, value) as T;
+      return builder.lt(dbField, value) as T;
     case "lte":
-      return builder.lte(field, value) as T;
+      return builder.lte(dbField, value) as T;
     case "in":
-      return builder.in(field, value as unknown[]) as T;
+      return builder.in(dbField, value as unknown[]) as T;
     case "not_in":
-      return builder.not(field, "in", value) as T;
+      return builder.not(dbField, "in", value) as T;
     case "contains":
-      return builder.like(field, `%${value}%`) as T;
+      return builder.like(dbField, `%${value}%`) as T;
     case "starts_with":
-      return builder.like(field, `${value}%`) as T;
+      return builder.like(dbField, `${value}%`) as T;
     case "ends_with":
-      return builder.like(field, `%${value}`) as T;
+      return builder.like(dbField, `%${value}`) as T;
     default:
-      return builder.eq(field, value) as T;
+      return builder.eq(dbField, value) as T;
   }
 }
 
@@ -127,9 +186,10 @@ export const athenaAdapter = (config: AthenaAdapterConfig): AdapterFactory<Bette
         // CREATE
         // ------------------------------------------------------------------
         create: async <T extends Record<string, unknown>>({ model, data }: { model: string; data: T; select?: string[] }) => {
+          const insertData = toDbRecord(data);
           const { data: result, error } = await db
             .from(model)
-            .insert(data)
+            .insert(insertData)
             .select();
 
           if (error) {
@@ -138,14 +198,15 @@ export const athenaAdapter = (config: AthenaAdapterConfig): AdapterFactory<Bette
 
           // Athena returns the inserted row(s); take the first one.
           const row = Array.isArray(result) ? result[0] : result;
-          return (row ?? data) as T;
+          return mapRowToBetterAuth((row ?? insertData) as T);
         },
 
         // ------------------------------------------------------------------
         // UPDATE
         // ------------------------------------------------------------------
         update: async <T>({ model, where, update }: { model: string; where: WhereClause[]; update: T }) => {
-          let builder = db.from(model).update(update as Record<string, unknown>);
+          const updateData = toDbRecord(update as Record<string, unknown>);
+          let builder = db.from(model).update(updateData);
 
           for (const clause of where) {
             builder = applyWhere(builder, clause.field, clause.operator, clause.value);
@@ -158,14 +219,15 @@ export const athenaAdapter = (config: AthenaAdapterConfig): AdapterFactory<Bette
           }
 
           const row = Array.isArray(result) ? result[0] : result;
-          return (row ?? null) as T | null;
+          return (row ? mapRowToBetterAuth(row as T) : null) as T | null;
         },
 
         // ------------------------------------------------------------------
         // UPDATE MANY
         // ------------------------------------------------------------------
         updateMany: async ({ model, where, update }: { model: string; where: WhereClause[]; update: Record<string, unknown> }) => {
-          let builder = db.from(model).update(update);
+          const updateData = toDbRecord(update);
+          let builder = db.from(model).update(updateData);
 
           for (const clause of where) {
             builder = applyWhere(builder, clause.field, clause.operator, clause.value);
@@ -220,7 +282,10 @@ export const athenaAdapter = (config: AthenaAdapterConfig): AdapterFactory<Bette
         // FIND ONE
         // ------------------------------------------------------------------
         findOne: async <T>({ model, where, select }: { model: string; where: WhereClause[]; select?: string[]; join?: unknown }) => {
-          const columns = select && select.length > 0 ? select.join(", ") : undefined;
+          const columns =
+            select && select.length > 0
+              ? select.map((c) => (hasUppercase(c) ? toSnakeCase(c) : c)).join(", ")
+              : undefined;
           let builder = db.from(model).select(columns);
 
           for (const clause of where) {
@@ -234,7 +299,8 @@ export const athenaAdapter = (config: AthenaAdapterConfig): AdapterFactory<Bette
           }
 
           const rows = Array.isArray(result) ? result : (result ? [result] : []);
-          return (rows[0] ?? null) as T | null;
+          const row = rows[0] ?? null;
+          return (row ? mapRowToBetterAuth(row as T) : null) as T | null;
         },
 
         // ------------------------------------------------------------------
@@ -249,7 +315,10 @@ export const athenaAdapter = (config: AthenaAdapterConfig): AdapterFactory<Bette
           offset?: number;
           join?: unknown;
         }) => {
-          const columns = select && select.length > 0 ? select.join(", ") : undefined;
+          const columns =
+            select && select.length > 0
+              ? select.map((c) => (hasUppercase(c) ? toSnakeCase(c) : c)).join(", ")
+              : undefined;
           let builder = db.from(model).select(columns);
 
           if (where) {
@@ -273,13 +342,15 @@ export const athenaAdapter = (config: AthenaAdapterConfig): AdapterFactory<Bette
           }
 
           const rows = (Array.isArray(result) ? result : []) as Record<string, unknown>[];
+          const betterAuthRows = rows.map((r) => mapRowToBetterAuth(r)) as unknown as T[];
 
           // The Athena SDK's select chain does not expose a native orderBy/sort
           // method, so we sort the returned rows in memory when sortBy is requested.
           if (sortBy) {
-            rows.sort((a, b) => {
-              const aVal = a[sortBy.field];
-              const bVal = b[sortBy.field];
+            const sortField = sortBy.field;
+            betterAuthRows.sort((a, b) => {
+              const aVal = (a as Record<string, unknown>)[sortField];
+              const bVal = (b as Record<string, unknown>)[sortField];
               if (aVal == null && bVal == null) return 0;
               if (aVal == null) return sortBy.direction === "asc" ? -1 : 1;
               if (bVal == null) return sortBy.direction === "asc" ? 1 : -1;
@@ -295,7 +366,7 @@ export const athenaAdapter = (config: AthenaAdapterConfig): AdapterFactory<Bette
             });
           }
 
-          return rows as T[];
+          return betterAuthRows;
         },
 
         // ------------------------------------------------------------------
