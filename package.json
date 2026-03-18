@@ -1,15 +1,28 @@
 {
-  "name": "@xylex-group/better-auth-athena",
-  "version": "1.0.0",
+  "author": "XYLEX GROUP",
+  "bugs": {
+    "url": "https://github.com/xylex-group/better-auth-athena/issues"
+  },
+  "contributors": [
+    "floris-xlx"
+  ],
   "description": "A better-Auth database adapter for @xylex-group/athena",
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "@xylex-group/athena": "^1.1.1",
+    "better-auth": "^1.5.5",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.0"
+  },
+  "engines": {
+    "node": ">=20.19.0"
+  },
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "require": "./dist/index.cjs",
+      "types": "./dist/index.d.ts"
     }
   },
   "files": [
@@ -19,47 +32,34 @@
     "CONTRIBUTING.md",
     "CONTRIBUTORS.md"
   ],
-  "scripts": {
-    "build": "tsup",
-    "dev": "tsup --watch",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "prepublishOnly": "npm run build && npm run typecheck && npm run test"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/xylex-group/better-auth-athena.git"
-  },
+  "homepage": "https://github.com/xylex-group/better-auth-athena#readme",
   "keywords": [
     "better-auth",
     "athena",
     "database",
     "adapter"
   ],
-  "author": "XYLEX GROUP",
-  "contributors": [
-    "floris-xlx"
-  ],
   "license": "MIT",
-  "type": "module",
-  "engines": {
-    "node": ">=20.19.0"
-  },
-  "bugs": {
-    "url": "https://github.com/xylex-group/better-auth-athena/issues"
-  },
-  "homepage": "https://github.com/xylex-group/better-auth-athena#readme",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "name": "@xylex-group/better-auth-athena",
   "peerDependencies": {
     "@xylex-group/athena": "^1.1.1",
     "better-auth": "^1.5.5"
   },
-  "devDependencies": {
-    "@types/node": "^25.5.0",
-    "@xylex-group/athena": "^1.1.1",
-    "better-auth": "^1.5.5",
-    "tsup": "^8.5.1",
-    "typescript": "^5.9.3",
-    "vitest": "^4.1.0"
-  }
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xylex-group/better-auth-athena.git"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "prepublishOnly": "npm run build && npm run typecheck && npm run test",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "version": "1.0.1"
 }

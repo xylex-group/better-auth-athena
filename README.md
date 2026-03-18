@@ -1,5 +1,7 @@
 # better-auth-athena
 
+current version: `1.0.1`
+
 A Better-Auth database adapter for the `@xylex-group/athena` gateway. It lets Better-Auth read and write data through Athena while keeping column names in `snake_case` as required by the gateway.
 
 ## Installation
