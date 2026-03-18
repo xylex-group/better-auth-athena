@@ -4,7 +4,10 @@ import {
   type DBAdapterDebugLogOption,
 } from "better-auth/adapters";
 import type { BetterAuthOptions } from "better-auth";
-import { createClient, type SupabaseClient as AthenaClient } from "@xylex-group/athena";
+import {
+  createClient,
+  type SupabaseClient as AthenaClient,
+} from "@xylex-group/athena";
 
 function toSnakeCase(key: string): string {
   // `userId` -> `user_id`, `createdAt` -> `created_at`
@@ -51,16 +54,24 @@ function coerceDateFields<T extends Record<string, unknown>>(data: T): T {
   for (const [key, val] of Object.entries(out)) {
     if (val == null) continue;
     if (val instanceof Date) continue;
-    if (typeof val === "string" && (key.endsWith("At") || key === "expires") && isLikelyIsoDateString(val)) {
+    if (
+      typeof val === "string" &&
+      (key.endsWith("At") || key.endsWith("_at") || key === "expires") &&
+      isLikelyIsoDateString(val)
+    ) {
       out[key] = new Date(val);
     }
   }
   return out as T;
 }
 
-function toDbRecord<T extends Record<string, unknown>>(data: T): Record<string, unknown> {
+function toDbRecord<T extends Record<string, unknown>>(
+  data: T,
+): Record<string, unknown> {
   // Better Auth uses camelCase; Athena gateway expects snake_case column names.
-  const withDbKeys = mapKeys(data, (k) => (hasUppercase(k) ? toSnakeCase(k) : k));
+  const withDbKeys = mapKeys(data, (k) =>
+    hasUppercase(k) ? toSnakeCase(k) : k,
+  );
   return coerceDateFields(withDbKeys);
 }
 
@@ -163,7 +174,9 @@ type WhereClause = { field: string; operator: string; value: unknown };
  * });
  * ```
  */
-export const athenaAdapter = (config: AthenaAdapterConfig): AdapterFactory<BetterAuthOptions> => {
+export const athenaAdapter = (
+  config: AthenaAdapterConfig,
+): AdapterFactory<BetterAuthOptions> => {
   const db: AthenaClient = createClient(config.url, config.apiKey, {
     client: config.client,
   });
@@ -185,7 +198,14 @@ export const athenaAdapter = (config: AthenaAdapterConfig): AdapterFactory<Bette
         // ------------------------------------------------------------------
         // CREATE
         // ------------------------------------------------------------------
-        create: async <T extends Record<string, unknown>>({ model, data }: { model: string; data: T; select?: string[] }) => {
+        create: async <T extends Record<string, unknown>>({
+          model,
+          data,
+        }: {
+          model: string;
+          data: T;
+          select?: string[];
+        }) => {
           const insertData = toDbRecord(data);
           const { data: result, error } = await db
             .from(model)
@@ -193,7 +213,9 @@ export const athenaAdapter = (config: AthenaAdapterConfig): AdapterFactory<Bette
             .select();
 
           if (error) {
-            throw new Error(`[AthenaAdapter] create on "${model}" failed: ${error}`);
+            throw new Error(
+              `[AthenaAdapter] create on "${model}" failed: ${error}`,
+            );
           }
 
           // Athena returns the inserted row(s); take the first one.
@@ -204,18 +226,33 @@ export const athenaAdapter = (config: AthenaAdapterConfig): AdapterFactory<Bette
         // ------------------------------------------------------------------
         // UPDATE
         // ------------------------------------------------------------------
-        update: async <T>({ model, where, update }: { model: string; where: WhereClause[]; update: T }) => {
+        update: async <T>({
+          model,
+          where,
+          update,
+        }: {
+          model: string;
+          where: WhereClause[];
+          update: T;
+        }) => {
           const updateData = toDbRecord(update as Record<string, unknown>);
           let builder = db.from(model).update(updateData);
 
           for (const clause of where) {
-            builder = applyWhere(builder, clause.field, clause.operator, clause.value);
+            builder = applyWhere(
+              builder,
+              clause.field,
+              clause.operator,
+              clause.value,
+            );
           }
 
           const { data: result, error } = await builder.select();
 
           if (error) {
-            throw new Error(`[AthenaAdapter] update on "${model}" failed: ${error}`);
+            throw new Error(
+              `[AthenaAdapter] update on "${model}" failed: ${error}`,
+            );
           }
 
           const row = Array.isArray(result) ? result[0] : result;
@@ -225,80 +262,139 @@ export const athenaAdapter = (config: AthenaAdapterConfig): AdapterFactory<Bette
         // ------------------------------------------------------------------
         // UPDATE MANY
         // ------------------------------------------------------------------
-        updateMany: async ({ model, where, update }: { model: string; where: WhereClause[]; update: Record<string, unknown> }) => {
+        updateMany: async ({
+          model,
+          where,
+          update,
+        }: {
+          model: string;
+          where: WhereClause[];
+          update: Record<string, unknown>;
+        }) => {
           const updateData = toDbRecord(update);
           let builder = db.from(model).update(updateData);
 
           for (const clause of where) {
-            builder = applyWhere(builder, clause.field, clause.operator, clause.value);
+            builder = applyWhere(
+              builder,
+              clause.field,
+              clause.operator,
+              clause.value,
+            );
           }
 
           const { data: result, error } = await builder.select();
 
           if (error) {
-            throw new Error(`[AthenaAdapter] updateMany on "${model}" failed: ${error}`);
+            throw new Error(
+              `[AthenaAdapter] updateMany on "${model}" failed: ${error}`,
+            );
           }
 
-          return Array.isArray(result) ? result.length : (result ? 1 : 0);
+          return Array.isArray(result) ? result.length : result ? 1 : 0;
         },
 
         // ------------------------------------------------------------------
         // DELETE
         // ------------------------------------------------------------------
-        delete: async ({ model, where }: { model: string; where: WhereClause[] }) => {
+        delete: async ({
+          model,
+          where,
+        }: {
+          model: string;
+          where: WhereClause[];
+        }) => {
           let builder = db.from(model);
 
           for (const clause of where) {
-            builder = applyWhere(builder, clause.field, clause.operator, clause.value);
+            builder = applyWhere(
+              builder,
+              clause.field,
+              clause.operator,
+              clause.value,
+            );
           }
 
           const { error } = await builder.delete();
 
           if (error) {
-            throw new Error(`[AthenaAdapter] delete on "${model}" failed: ${error}`);
+            throw new Error(
+              `[AthenaAdapter] delete on "${model}" failed: ${error}`,
+            );
           }
         },
 
         // ------------------------------------------------------------------
         // DELETE MANY
         // ------------------------------------------------------------------
-        deleteMany: async ({ model, where }: { model: string; where: WhereClause[] }) => {
+        deleteMany: async ({
+          model,
+          where,
+        }: {
+          model: string;
+          where: WhereClause[];
+        }) => {
           let builder = db.from(model);
 
           for (const clause of where) {
-            builder = applyWhere(builder, clause.field, clause.operator, clause.value);
+            builder = applyWhere(
+              builder,
+              clause.field,
+              clause.operator,
+              clause.value,
+            );
           }
 
           const { data: result, error } = await builder.delete().select();
 
           if (error) {
-            throw new Error(`[AthenaAdapter] deleteMany on "${model}" failed: ${error}`);
+            throw new Error(
+              `[AthenaAdapter] deleteMany on "${model}" failed: ${error}`,
+            );
           }
 
-          return Array.isArray(result) ? result.length : (result ? 1 : 0);
+          return Array.isArray(result) ? result.length : result ? 1 : 0;
         },
 
         // ------------------------------------------------------------------
         // FIND ONE
         // ------------------------------------------------------------------
-        findOne: async <T>({ model, where, select }: { model: string; where: WhereClause[]; select?: string[]; join?: unknown }) => {
+        findOne: async <T>({
+          model,
+          where,
+          select,
+        }: {
+          model: string;
+          where: WhereClause[];
+          select?: string[];
+          join?: unknown;
+        }) => {
           const columns =
             select && select.length > 0
-              ? select.map((c) => (hasUppercase(c) ? toSnakeCase(c) : c)).join(", ")
+              ? select
+                  .map((c) => (hasUppercase(c) ? toSnakeCase(c) : c))
+                  .join(", ")
               : undefined;
           let builder = db.from(model).select(columns);
 
           for (const clause of where) {
-            builder = applyWhere(builder, clause.field, clause.operator, clause.value);
+            builder = applyWhere(
+              builder,
+              clause.field,
+              clause.operator,
+              clause.value,
+            );
           }
 
           const { data: result, error } = await builder.limit(1);
 
           if (error) {
-            throw new Error(`[AthenaAdapter] findOne on "${model}" failed: ${error}`);
+            throw new Error(
+              `[AthenaAdapter] findOne on "${model}" failed: ${error}`,
+            );
           }
 
-          const rows = Array.isArray(result) ? result : (result ? [result] : []);
+          const rows = Array.isArray(result) ? result : result ? [result] : [];
           const row = rows[0] ?? null;
           return (row ? mapRowToBetterAuth(row as T) : null) as T | null;
         },
@@ -306,7 +402,14 @@ export const athenaAdapter = (config: AthenaAdapterConfig): AdapterFactory<Bette
         // ------------------------------------------------------------------
         // FIND MANY
         // ------------------------------------------------------------------
-        findMany: async <T>({ model, where, limit, sortBy, offset, select }: {
+        findMany: async <T>({
+          model,
+          where,
+          limit,
+          sortBy,
+          offset,
+          select,
+        }: {
           model: string;
           where?: WhereClause[];
           limit: number;
@@ -317,13 +420,20 @@ export const athenaAdapter = (config: AthenaAdapterConfig): AdapterFactory<Bette
         }) => {
           const columns =
             select && select.length > 0
-              ? select.map((c) => (hasUppercase(c) ? toSnakeCase(c) : c)).join(", ")
+              ? select
+                  .map((c) => (hasUppercase(c) ? toSnakeCase(c) : c))
+                  .join(", ")
               : undefined;
           let builder = db.from(model).select(columns);
 
           if (where) {
             for (const clause of where) {
-              builder = applyWhere(builder, clause.field, clause.operator, clause.value);
+              builder = applyWhere(
+                builder,
+                clause.field,
+                clause.operator,
+                clause.value,
+              );
             }
           }
 
@@ -338,11 +448,18 @@ export const athenaAdapter = (config: AthenaAdapterConfig): AdapterFactory<Bette
           const { data: result, error } = await builder;
 
           if (error) {
-            throw new Error(`[AthenaAdapter] findMany on "${model}" failed: ${error}`);
+            throw new Error(
+              `[AthenaAdapter] findMany on "${model}" failed: ${error}`,
+            );
           }
 
-          const rows = (Array.isArray(result) ? result : []) as Record<string, unknown>[];
-          const betterAuthRows = rows.map((r) => mapRowToBetterAuth(r)) as unknown as T[];
+          const rows = (Array.isArray(result) ? result : []) as Record<
+            string,
+            unknown
+          >[];
+          const betterAuthRows = rows.map((r) =>
+            mapRowToBetterAuth(r),
+          ) as unknown as T[];
 
           // The Athena SDK's select chain does not expose a native orderBy/sort
           // method, so we sort the returned rows in memory when sortBy is requested.
@@ -358,10 +475,10 @@ export const athenaAdapter = (config: AthenaAdapterConfig): AdapterFactory<Bette
                 typeof aVal === "string" && typeof bVal === "string"
                   ? aVal.localeCompare(bVal)
                   : aVal < bVal
-                  ? -1
-                  : aVal > bVal
-                  ? 1
-                  : 0;
+                    ? -1
+                    : aVal > bVal
+                      ? 1
+                      : 0;
               return sortBy.direction === "asc" ? cmp : -cmp;
             });
           }
@@ -372,19 +489,32 @@ export const athenaAdapter = (config: AthenaAdapterConfig): AdapterFactory<Bette
         // ------------------------------------------------------------------
         // COUNT
         // ------------------------------------------------------------------
-        count: async ({ model, where }: { model: string; where?: WhereClause[] }) => {
+        count: async ({
+          model,
+          where,
+        }: {
+          model: string;
+          where?: WhereClause[];
+        }) => {
           let builder = db.from(model).select();
 
           if (where) {
             for (const clause of where) {
-              builder = applyWhere(builder, clause.field, clause.operator, clause.value);
+              builder = applyWhere(
+                builder,
+                clause.field,
+                clause.operator,
+                clause.value,
+              );
             }
           }
 
           const { data: result, error } = await builder;
 
           if (error) {
-            throw new Error(`[AthenaAdapter] count on "${model}" failed: ${error}`);
+            throw new Error(
+              `[AthenaAdapter] count on "${model}" failed: ${error}`,
+            );
           }
 
           return Array.isArray(result) ? result.length : 0;
@@ -393,4 +523,3 @@ export const athenaAdapter = (config: AthenaAdapterConfig): AdapterFactory<Bette
     },
   });
 };
-
