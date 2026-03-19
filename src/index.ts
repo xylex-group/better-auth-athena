@@ -8,6 +8,7 @@ import {
   createClient,
   type SupabaseClient as AthenaClient,
 } from "@xylex-group/athena";
+import { getAthenaGlobalConfig } from "./config";
 
 function toSnakeCase(key: string): string {
   // `userId` -> `user_id`, `createdAt` -> `created_at`
@@ -48,15 +49,17 @@ function isLikelyIsoDateString(value: string): boolean {
   return Number.isFinite(ms);
 }
 
+function isTimestampKey(key: string): boolean {
+  return key.endsWith("At") || key.endsWith("_at") || key === "expires";
+}
+
 function coerceDateFields<T extends Record<string, unknown>>(data: T): T {
-  // Athena expects timestamp/timestamptz values as Date (not plain text).
   const out: Record<string, unknown> = { ...data };
   for (const [key, val] of Object.entries(out)) {
     if (val == null) continue;
-    if (val instanceof Date) continue;
     if (
       typeof val === "string" &&
-      (key.endsWith("At") || key.endsWith("_at") || key === "expires") &&
+      isTimestampKey(key) &&
       isLikelyIsoDateString(val)
     ) {
       out[key] = new Date(val);
@@ -72,6 +75,7 @@ function toDbRecord<T extends Record<string, unknown>>(
   const withDbKeys = mapKeys(data, (k) =>
     hasUppercase(k) ? toSnakeCase(k) : k,
   );
+  // Coerce ISO strings to Date; gateway must cast JSON string to timestamptz (e.g. $1::timestamptz).
   return coerceDateFields(withDbKeys);
 }
 
@@ -82,15 +86,28 @@ export interface AthenaAdapterConfig {
   /**
    * The URL of your Athena gateway.
    */
-  url: string;
+  url?: string;
   /**
    * The API key for authenticating with the Athena gateway.
    */
-  apiKey: string;
+  apiKey?: string;
   /**
    * The client name sent in requests to the Athena gateway.
    */
   client?: string;
+
+  /**
+   * Optional override for the YAML config path.
+   * Defaults to `./config.yaml` (resolved from `process.cwd()`).
+   */
+  configPath?: string;
+
+  /**
+   * When enabled, the adapter will reload `config.yaml` on changes.
+   *
+   * @default true
+   */
+  watchConfig?: boolean;
   /**
    * Helps you debug issues with the adapter.
    */
@@ -177,9 +194,47 @@ type WhereClause = { field: string; operator: string; value: unknown };
 export const athenaAdapter = (
   config: AthenaAdapterConfig,
 ): AdapterFactory<BetterAuthOptions> => {
-  const db: AthenaClient = createClient(config.url, config.apiKey, {
-    client: config.client,
-  });
+  let dbClient: AthenaClient | null = null;
+  let lastDbConfigVersion = -1;
+
+  const shouldUseFixedConfig =
+    typeof config.url === "string" &&
+    config.url.length > 0 &&
+    typeof config.apiKey === "string" &&
+    config.apiKey.length > 0;
+
+  function ensureDbClient(): AthenaClient {
+    if (shouldUseFixedConfig) {
+      if (!dbClient) {
+        dbClient = createClient(config.url!, config.apiKey!, {
+          client: config.client,
+        });
+      }
+      return dbClient;
+    }
+
+    const { config: globalConfig, version } = getAthenaGlobalConfig({
+      configPath: config.configPath,
+      watch: config.watchConfig ?? true,
+    });
+
+    const url = config.url ?? globalConfig.athena.url;
+    const apiKey = config.apiKey ?? globalConfig.athena.apiKey;
+    const client = config.client ?? globalConfig.athena.client;
+
+    if (!url || !apiKey) {
+      throw new Error(
+        `[AthenaAdapter] Missing Athena connection details. Set both 'athena.url' and 'athena.apiKey' in config.yaml (or pass 'url'/'apiKey' to athenaAdapter).`,
+      );
+    }
+
+    if (!dbClient || version !== lastDbConfigVersion) {
+      dbClient = createClient(url, apiKey, { client });
+      lastDbConfigVersion = version;
+    }
+
+    return dbClient;
+  }
 
   return createAdapterFactory({
     config: {
@@ -192,6 +247,7 @@ export const athenaAdapter = (
       supportsDates: true,
       supportsBooleans: true,
       supportsNumericIds: true,
+
     },
     adapter: () => {
       return {
@@ -206,6 +262,7 @@ export const athenaAdapter = (
           data: T;
           select?: string[];
         }) => {
+          const db = ensureDbClient();
           const insertData = toDbRecord(data);
           const { data: result, error } = await db
             .from(model)
@@ -235,6 +292,7 @@ export const athenaAdapter = (
           where: WhereClause[];
           update: T;
         }) => {
+          const db = ensureDbClient();
           const updateData = toDbRecord(update as Record<string, unknown>);
           let builder = db.from(model).update(updateData);
 
@@ -271,6 +329,7 @@ export const athenaAdapter = (
           where: WhereClause[];
           update: Record<string, unknown>;
         }) => {
+          const db = ensureDbClient();
           const updateData = toDbRecord(update);
           let builder = db.from(model).update(updateData);
 
@@ -304,6 +363,7 @@ export const athenaAdapter = (
           model: string;
           where: WhereClause[];
         }) => {
+          const db = ensureDbClient();
           let builder = db.from(model);
 
           for (const clause of where) {
@@ -334,6 +394,7 @@ export const athenaAdapter = (
           model: string;
           where: WhereClause[];
         }) => {
+          const db = ensureDbClient();
           let builder = db.from(model);
 
           for (const clause of where) {
@@ -369,6 +430,7 @@ export const athenaAdapter = (
           select?: string[];
           join?: unknown;
         }) => {
+          const db = ensureDbClient();
           const columns =
             select && select.length > 0
               ? select
@@ -418,6 +480,7 @@ export const athenaAdapter = (
           offset?: number;
           join?: unknown;
         }) => {
+          const db = ensureDbClient();
           const columns =
             select && select.length > 0
               ? select
@@ -496,6 +559,7 @@ export const athenaAdapter = (
           model: string;
           where?: WhereClause[];
         }) => {
+          const db = ensureDbClient();
           let builder = db.from(model).select();
 
           if (where) {

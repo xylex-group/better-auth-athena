@@ -24,8 +24,6 @@ import { athenaAdapter } from "better-auth-athena";
 
 export const auth = betterAuth({
   database: athenaAdapter({
-    url: process.env.ATHENA_URL!,
-    apiKey: process.env.ATHENA_API_KEY!,
     client: "my-app",
   }),
 });
@@ -37,11 +35,15 @@ export const auth = betterAuth({
 
 | Option | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| `url` | `string` | ✅ | — | Athena gateway URL. |
-| `apiKey` | `string` | ✅ | — | API key used to authenticate with Athena. |
+| `url` | `string` | ❌ (if `config.yaml` provides it) | — | Athena gateway URL. |
+| `apiKey` | `string` | ❌ (if `config.yaml` provides it) | — | API key used to authenticate with Athena. |
 | `client` | `string` | ❌ | — | Client name included with gateway requests. |
 | `debugLogs` | `DBAdapterDebugLogOption` | ❌ | `false` | Enables Better-Auth adapter debug logs. |
 | `usePlural` | `boolean` | ❌ | `false` | Treats table names as plural when mapping models. |
+| `configPath` | `string` | ❌ | `./config.yaml` | Path to the YAML config file (resolved from `process.cwd()`). |
+| `watchConfig` | `boolean` | ❌ | `true` | When enabled, reload `config.yaml` on changes. |
+
+If `url`/`apiKey` are not passed, the adapter reads them from `config.yaml` in `process.cwd()`. If the file does not exist, it is generated at runtime from defaults.
 
 ## Notes
 

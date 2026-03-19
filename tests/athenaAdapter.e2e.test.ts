@@ -79,7 +79,7 @@ describe("athenaAdapter (e2e)", () => {
     createClient.mockReturnValue({ from });
 
     const adapter = athenaAdapter({
-      url: "https://athena-db.com",
+      url: "https://mirror2.athena-db.com",
       apiKey: "secret",
     }) as unknown as TestAdapter;
 
@@ -89,7 +89,7 @@ describe("athenaAdapter (e2e)", () => {
       data: { userId: "u_1", createdAt: createdAtIso },
     });
 
-    // Insert payload should be snake_case and have Date instance.
+    // Insert payload: snake_case; timestamps as Date (JSON sends as ISO string; gateway must use ::timestamptz).
     const insertCall = builder.calls.find((c) => c.method === "insert");
     expect(insertCall).toBeTruthy();
     const inserted = (insertCall!.args?.[0] ?? {}) as Record<string, unknown>;
@@ -116,7 +116,7 @@ describe("athenaAdapter (e2e)", () => {
     createClient.mockReturnValue({ from });
 
     const adapter = athenaAdapter({
-      url: "https://athena-db.com",
+      url: "https://mirror2.athena-db.com",
       apiKey: "secret",
     }) as unknown as TestAdapter;
 
