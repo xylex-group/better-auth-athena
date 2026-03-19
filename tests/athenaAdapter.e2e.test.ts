@@ -28,7 +28,10 @@ import { athenaAdapter } from "../src/index";
 type BuilderResult = { data: unknown; error: unknown };
 
 type TestAdapter = {
-  create: (args: { model: string; data: Record<string, unknown> }) => Promise<Record<string, unknown>>;
+  create: (args: {
+    model: string;
+    data: Record<string, unknown>;
+  }) => Promise<Record<string, unknown>>;
   findOne: (args: {
     model: string;
     where: Array<{ field: string; operator: string; value: unknown }>;
@@ -110,7 +113,9 @@ describe("athenaAdapter (e2e)", () => {
     const insertCall = builder.calls.find((c) => c.method === "insert");
     expect(insertCall).toBeTruthy();
     const inserted = (insertCall!.args?.[0] ?? {}) as Record<string, unknown>;
-    expect(Object.keys(inserted)).toEqual(expect.arrayContaining(["user_id", "created_at"]));
+    expect(Object.keys(inserted)).toEqual(
+      expect.arrayContaining(["user_id", "created_at"]),
+    );
     expect(inserted.user_id).toBe("u_1");
     expect(inserted.created_at).toBeInstanceOf(Date);
     expect((inserted.created_at as Date).toISOString()).toBe(createdAtIso);
@@ -173,11 +178,13 @@ describe("athenaAdapter (e2e)", () => {
 
     expect(builder.calls).toEqual(
       expect.arrayContaining([
-        { method: "update", args: [{ data: { user_id: "u_1" }, set: { user_id: "u_1" } }] },
+        {
+          method: "update",
+          args: [{ data: { user_id: "u_1" }, set: { user_id: "u_1" } }],
+        },
         { method: "eq", args: ["id", "row_1"] },
         { method: "select", args: [undefined] },
       ]),
     );
   });
 });
-

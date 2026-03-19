@@ -15,9 +15,9 @@ export type AthenaGlobalConfig = {
 // `url`/`apiKey` are still unset when used.
 export const defaultAthenaGlobalConfig: AthenaGlobalConfig = {
   athena: {
-    url: "http://localhost:3000",
-    apiKey: "",
-    client: "better-auth",
+    url: "https://mirror3.athena-db.com",
+    apiKey: "x",
+    client: "athena-logging",
   },
 };
 

@@ -9,7 +9,7 @@
  * 2. Set ATHENA_URL and ATHENA_API_KEY (or use config.yaml with athena.url and athena.apiKey).
  * 3. Run: pnpm test -- athenaAdapter.real.e2e.test.ts
  *
- * Uses client "athena-logging" and table "athana_adattper_e2e".
+ * Uses client "athena-logging" and table "athena_adapter_e2e".
  *
  * If ATHENA_URL or ATHENA_API_KEY is missing, the entire suite is skipped.
  */
@@ -31,7 +31,7 @@ vi.mock("better-auth/adapters", () => ({
 // Do NOT mock @xylex-group/athena — use real client for real DB.
 import { athenaAdapter } from "../src/index";
 
-const MODEL = "athana_adattper_e2e";
+const MODEL = "athena_adapter_e2e";
 
 function getConfig(): { url: string; apiKey: string } {
   const url = process.env.ATHENA_URL ?? "";
