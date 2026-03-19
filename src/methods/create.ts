@@ -1,4 +1,4 @@
-import { toDbRecord, mapRowToBetterAuth } from "../utils";
+import { toDbRecord, mapRowToBetterAuth, isSuccessMessageInError } from "../utils";
 
 export type CreateDeps = {
   ensureDbClient: () => any;
@@ -22,7 +22,7 @@ export function createMethod(deps: CreateDeps) {
       .insert(insertData)
       .select();
 
-    if (error) {
+    if (error && !isSuccessMessageInError(error)) {
       throw new Error(`[AthenaAdapter] create on "${model}" failed: ${error}`);
     }
 

@@ -1,5 +1,5 @@
 import type { WhereClause, AthenaFilterBuilder } from "../utils";
-import { toDbRecord, applyWhere } from "../utils";
+import { toDbRecord, applyWhere, isSuccessMessageInError } from "../utils";
 
 export type UpdateManyDeps = {
   ensureDbClient: () => any;
@@ -34,7 +34,7 @@ export function updateManyMethod(deps: UpdateManyDeps) {
 
     const { data: result, error } = await (builder as any).select();
 
-    if (error) {
+    if (error && !isSuccessMessageInError(error)) {
       throw new Error(
         `[AthenaAdapter] updateMany on "${model}" failed: ${error}`,
       );

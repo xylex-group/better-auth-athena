@@ -1,5 +1,5 @@
 import type { WhereClause, AthenaFilterBuilder } from "../utils";
-import { toDbRecord, mapRowToBetterAuth, applyWhere } from "../utils";
+import { toDbRecord, mapRowToBetterAuth, applyWhere, isSuccessMessageInError } from "../utils";
 
 export type UpdateDeps = {
   ensureDbClient: () => any;
@@ -34,7 +34,7 @@ export function updateMethod(deps: UpdateDeps) {
 
     const { data: result, error } = await (builder as any).select();
 
-    if (error) {
+    if (error && !isSuccessMessageInError(error)) {
       throw new Error(`[AthenaAdapter] update on "${model}" failed: ${error}`);
     }
 

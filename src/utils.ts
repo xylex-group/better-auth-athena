@@ -129,6 +129,16 @@ export function isMissingColumnError(error: unknown): boolean {
   );
 }
 
+/** True when the Athena gateway returns a success message in the error field (treat as success). */
+export function isSuccessMessageInError(error: unknown): boolean {
+  const msg = String(error ?? "").toLowerCase();
+  return (
+    msg === "data inserted successfully" ||
+    msg === "data updated successfully" ||
+    msg === "data deleted successfully"
+  );
+}
+
 export function snakeMapper(col: string): string {
   return hasUppercase(col) ? toSnakeCase(col) : col;
 }

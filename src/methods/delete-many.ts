@@ -1,5 +1,5 @@
 import type { WhereClause, AthenaFilterBuilder } from "../utils";
-import { applyWhere } from "../utils";
+import { applyWhere, isSuccessMessageInError } from "../utils";
 
 export type DeleteManyDeps = {
   ensureDbClient: () => any;
@@ -29,7 +29,7 @@ export function deleteManyMethod(deps: DeleteManyDeps) {
 
     const { data: result, error } = await (builder as any).delete().select();
 
-    if (error) {
+    if (error && !isSuccessMessageInError(error)) {
       throw new Error(
         `[AthenaAdapter] deleteMany on "${model}" failed: ${error}`,
       );
