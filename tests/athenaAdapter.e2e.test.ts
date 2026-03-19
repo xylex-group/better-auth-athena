@@ -1,8 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+// `bun test` doesn't provide `vi.hoisted`, but Vitest does.
+// Provide a tiny shim so the same tests can run under both runners.
+if (typeof (vi as any).hoisted !== "function") {
+  (vi as any).hoisted = (fn: () => unknown) => fn();
+}
+
 const { createAdapterFactory, createClient } = vi.hoisted(() => {
   return {
-    createAdapterFactory: vi.fn((options: { adapter: () => unknown }) => options.adapter()),
+    createAdapterFactory: vi.fn((options: { adapter: () => unknown }) =>
+      options.adapter(),
+    ),
     createClient: vi.fn(),
   };
 });

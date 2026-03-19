@@ -6,6 +6,9 @@
   "contributors": [
     "floris-xlx"
   ],
+  "dependencies": {
+    "yaml": "^2.8.2"
+  },
   "description": "A better-Auth database adapter for @xylex-group/athena",
   "devDependencies": {
     "@types/node": "^25.5.0",
@@ -21,8 +24,7 @@
   "exports": {
     ".": {
       "import": "./dist/index.js",
-      "require": "./dist/index.cjs",
-      "types": "./dist/index.d.ts"
+      "require": "./dist/index.cjs"
     }
   },
   "files": [
@@ -61,8 +63,5 @@
   },
   "type": "module",
   "types": "./dist/index.d.ts",
-  "version": "1.0.1",
-  "dependencies": {
-    "yaml": "^2.8.2"
-  }
+  "version": "1.0.2"
 }

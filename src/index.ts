@@ -140,8 +140,10 @@ function applyWhere<T extends AthenaFilterBuilder>(
   field: string,
   operator: string,
   value: unknown,
+  columnMapper: (col: string) => string = (col) =>
+    hasUppercase(col) ? toSnakeCase(col) : col,
 ): T {
-  const dbField = hasUppercase(field) ? toSnakeCase(field) : field;
+  const dbField = columnMapper(field);
   switch (operator) {
     case "eq":
       return builder.eq(dbField, value) as T;
@@ -171,6 +173,14 @@ function applyWhere<T extends AthenaFilterBuilder>(
 }
 
 type WhereClause = { field: string; operator: string; value: unknown };
+
+function isMissingColumnError(error: unknown): boolean {
+  const msg = String(error ?? "");
+  return (
+    msg.includes("specified column does not exist") ||
+    msg.includes("column does not exist")
+  );
+}
 
 /**
  * Create a Better-Auth database adapter backed by @xylex-group/athena.
@@ -247,7 +257,7 @@ export const athenaAdapter = (
       supportsDates: true,
       supportsBooleans: true,
       supportsNumericIds: true,
-
+      supportsUUIDs: true,
     },
     adapter: () => {
       return {
@@ -431,32 +441,62 @@ export const athenaAdapter = (
           join?: unknown;
         }) => {
           const db = ensureDbClient();
-          const columns =
-            select && select.length > 0
-              ? select
-                  .map((c) => (hasUppercase(c) ? toSnakeCase(c) : c))
-                  .join(", ")
-              : undefined;
-          let builder = db.from(model).select(columns);
 
-          for (const clause of where) {
-            builder = applyWhere(
-              builder,
-              clause.field,
-              clause.operator,
-              clause.value,
-            );
-          }
+          const snakeMapper = (col: string) =>
+            hasUppercase(col) ? toSnakeCase(col) : col;
+          const identityMapper = (col: string) => col;
 
-          const { data: result, error } = await builder.limit(1);
+          const run = async (columnMapper: (col: string) => string) => {
+            const columns =
+              select && select.length > 0
+                ? select.map((c) => columnMapper(c)).join(", ")
+                : undefined;
 
-          if (error) {
+            let builder = db.from(model).select(columns);
+
+            for (const clause of where) {
+              builder = applyWhere(
+                builder,
+                clause.field,
+                clause.operator,
+                clause.value,
+                columnMapper,
+              );
+            }
+
+            const { data: result, error } = await builder.limit(1);
+            return { result, error };
+          };
+
+          const first = await run(snakeMapper);
+          if (first.error) {
+            if (isMissingColumnError(first.error)) {
+              const retry = await run(identityMapper);
+              if (retry.error) {
+                throw new Error(
+                  `[AthenaAdapter] findOne on "${model}" failed: ${retry.error}`,
+                );
+              }
+
+              const rows = Array.isArray(retry.result)
+                ? retry.result
+                : retry.result
+                  ? [retry.result]
+                  : [];
+              const row = rows[0] ?? null;
+              return (row ? mapRowToBetterAuth(row as T) : null) as T | null;
+            }
+
             throw new Error(
-              `[AthenaAdapter] findOne on "${model}" failed: ${error}`,
+              `[AthenaAdapter] findOne on "${model}" failed: ${first.error}`,
             );
           }
 
-          const rows = Array.isArray(result) ? result : result ? [result] : [];
+          const rows = Array.isArray(first.result)
+            ? first.result
+            : first.result
+              ? [first.result]
+              : [];
           const row = rows[0] ?? null;
           return (row ? mapRowToBetterAuth(row as T) : null) as T | null;
         },
@@ -481,54 +521,51 @@ export const athenaAdapter = (
           join?: unknown;
         }) => {
           const db = ensureDbClient();
-          const columns =
-            select && select.length > 0
-              ? select
-                  .map((c) => (hasUppercase(c) ? toSnakeCase(c) : c))
-                  .join(", ")
-              : undefined;
-          let builder = db.from(model).select(columns);
 
-          if (where) {
-            for (const clause of where) {
-              builder = applyWhere(
-                builder,
-                clause.field,
-                clause.operator,
-                clause.value,
-              );
+          const snakeMapper = (col: string) =>
+            hasUppercase(col) ? toSnakeCase(col) : col;
+          const identityMapper = (col: string) => col;
+
+          const run = async (columnMapper: (col: string) => string) => {
+            const columns =
+              select && select.length > 0
+                ? select.map((c) => columnMapper(c)).join(", ")
+                : undefined;
+
+            let builder = db.from(model).select(columns);
+
+            if (where) {
+              for (const clause of where) {
+                builder = applyWhere(
+                  builder,
+                  clause.field,
+                  clause.operator,
+                  clause.value,
+                  columnMapper,
+                );
+              }
             }
-          }
 
-          if (limit !== undefined) {
-            builder = builder.limit(limit);
-          }
+            if (limit !== undefined) {
+              builder = builder.limit(limit);
+            }
 
-          if (offset !== undefined) {
-            builder = builder.offset(offset);
-          }
+            if (offset !== undefined) {
+              builder = builder.offset(offset);
+            }
 
-          const { data: result, error } = await builder;
+            const { data: result, error } = await builder;
+            return { result, error };
+          };
 
-          if (error) {
-            throw new Error(
-              `[AthenaAdapter] findMany on "${model}" failed: ${error}`,
-            );
-          }
+          const first = await run(snakeMapper);
+          const pickRows = (res: unknown) =>
+            (Array.isArray(res) ? res : []) as Record<string, unknown>[];
 
-          const rows = (Array.isArray(result) ? result : []) as Record<
-            string,
-            unknown
-          >[];
-          const betterAuthRows = rows.map((r) =>
-            mapRowToBetterAuth(r),
-          ) as unknown as T[];
-
-          // The Athena SDK's select chain does not expose a native orderBy/sort
-          // method, so we sort the returned rows in memory when sortBy is requested.
-          if (sortBy) {
+          const applySort = (rows: T[]) => {
+            if (!sortBy) return rows;
             const sortField = sortBy.field;
-            betterAuthRows.sort((a, b) => {
+            rows.sort((a, b) => {
               const aVal = (a as Record<string, unknown>)[sortField];
               const bVal = (b as Record<string, unknown>)[sortField];
               if (aVal == null && bVal == null) return 0;
@@ -544,9 +581,33 @@ export const athenaAdapter = (
                       : 0;
               return sortBy.direction === "asc" ? cmp : -cmp;
             });
+            return rows;
+          };
+
+          const mapAndSort = (rows: Record<string, unknown>[]) => {
+            const betterAuthRows = rows.map((r) =>
+              mapRowToBetterAuth(r),
+            ) as unknown as T[];
+            return applySort(betterAuthRows);
+          };
+
+          if (first.error) {
+            if (isMissingColumnError(first.error)) {
+              const retry = await run(identityMapper);
+              if (retry.error) {
+                throw new Error(
+                  `[AthenaAdapter] findMany on "${model}" failed: ${retry.error}`,
+                );
+              }
+              return mapAndSort(pickRows(retry.result));
+            }
+
+            throw new Error(
+              `[AthenaAdapter] findMany on "${model}" failed: ${first.error}`,
+            );
           }
 
-          return betterAuthRows;
+          return mapAndSort(pickRows(first.result));
         },
 
         // ------------------------------------------------------------------
@@ -560,28 +621,47 @@ export const athenaAdapter = (
           where?: WhereClause[];
         }) => {
           const db = ensureDbClient();
-          let builder = db.from(model).select();
 
-          if (where) {
-            for (const clause of where) {
-              builder = applyWhere(
-                builder,
-                clause.field,
-                clause.operator,
-                clause.value,
-              );
+          const snakeMapper = (col: string) =>
+            hasUppercase(col) ? toSnakeCase(col) : col;
+          const identityMapper = (col: string) => col;
+
+          const run = async (columnMapper: (col: string) => string) => {
+            let builder = db.from(model).select();
+
+            if (where) {
+              for (const clause of where) {
+                builder = applyWhere(
+                  builder,
+                  clause.field,
+                  clause.operator,
+                  clause.value,
+                  columnMapper,
+                );
+              }
             }
-          }
 
-          const { data: result, error } = await builder;
+            const { data: result, error } = await builder;
+            return { result, error };
+          };
 
-          if (error) {
+          const first = await run(snakeMapper);
+          if (first.error) {
+            if (isMissingColumnError(first.error)) {
+              const retry = await run(identityMapper);
+              if (retry.error) {
+                throw new Error(
+                  `[AthenaAdapter] count on "${model}" failed: ${retry.error}`,
+                );
+              }
+              return Array.isArray(retry.result) ? retry.result.length : 0;
+            }
             throw new Error(
-              `[AthenaAdapter] count on "${model}" failed: ${error}`,
+              `[AthenaAdapter] count on "${model}" failed: ${first.error}`,
             );
           }
 
-          return Array.isArray(result) ? result.length : 0;
+          return Array.isArray(first.result) ? first.result.length : 0;
         },
       };
     },
