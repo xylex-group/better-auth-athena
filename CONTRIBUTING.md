@@ -16,6 +16,23 @@ Thanks for taking the time to contribute to **better-auth-athena**!
    npm run build
    ```
 
+## Real database e2e tests
+
+Integration tests run every adapter method (create, update, updateMany, delete, deleteMany, findOne, findMany, count) against a live Athena gateway and database. They are **skipped** unless `ATHENA_URL` and `ATHENA_API_KEY` are set.
+
+To run them:
+
+1. Create the test table (run the SQL in `tests/fixtures/athena_adapter_e2e.sql`) on the database your Athena gateway uses. The tests use client `athena-logging` and table `athena_adapter_e2e`.
+2. Set environment variables:
+   ```bash
+   export ATHENA_URL="https://mirror3.athena-db.com"
+   export ATHENA_API_KEY="x"
+   ```
+3. Run the real e2e suite:
+   ```bash
+   pnpm test -- athenaAdapter.real.e2e
+   ```
+
 ## Pull Requests
 
 - Keep changes focused and scoped to a single issue.
