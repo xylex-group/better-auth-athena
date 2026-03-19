@@ -21,7 +21,7 @@ export function updateManyMethod(deps: UpdateManyDeps) {
     const updateData = toDbRecord(update);
     let builder = db
       .from(model)
-      .update({ data: updateData, set: updateData }) as AthenaFilterBuilder;
+      .update({ set: updateData }) as AthenaFilterBuilder;
 
     for (const clause of where) {
       builder = applyWhere(

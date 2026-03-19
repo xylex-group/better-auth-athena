@@ -146,3 +146,43 @@ export function snakeMapper(col: string): string {
 export function identityMapper(col: string): string {
   return col;
 }
+
+/** Get value from row by field name (camelCase or snake_case). */
+function getRowValue(row: Record<string, unknown>, field: string): unknown {
+  if (Object.prototype.hasOwnProperty.call(row, field)) return row[field];
+  const snake = hasUppercase(field) ? toSnakeCase(field) : field;
+  return row[snake];
+}
+
+/**
+ * Filter rows in-memory by where clauses (fallback when gateway does not apply filters).
+ * Supports eq, ne, in, not_in; row keys may be camelCase or snake_case.
+ */
+export function filterRowsByWhere(
+  rows: Record<string, unknown>[],
+  where: WhereClause[],
+): Record<string, unknown>[] {
+  if (!where.length) return rows;
+  return rows.filter((row) => {
+    for (const { field, operator, value } of where) {
+      const rowVal = getRowValue(row, field);
+      switch (operator) {
+        case "eq":
+          if (rowVal !== value) return false;
+          break;
+        case "ne":
+          if (rowVal === value) return false;
+          break;
+        case "in":
+          if (!Array.isArray(value) || !value.includes(rowVal)) return false;
+          break;
+        case "not_in":
+          if (Array.isArray(value) && value.includes(rowVal)) return false;
+          break;
+        default:
+          if (rowVal !== value) return false;
+      }
+    }
+    return true;
+  });
+}

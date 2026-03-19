@@ -54,6 +54,11 @@ export interface AthenaAdapterConfig {
    * @default false
    */
   usePlural?: boolean;
+
+  /**
+   * Optional headers sent with every request (e.g. `X-User-Id` if your gateway requires it for delete).
+   */
+  headers?: Record<string, string>;
 }
 
 /**
@@ -92,7 +97,8 @@ export const athenaAdapter = (
       if (!dbClient) {
         dbClient = createClient(config.url!, config.apiKey!, {
           client: config.client,
-        });
+          ...(config.headers && { headers: config.headers }),
+        } as any);
       }
       return dbClient;
     }
@@ -113,7 +119,10 @@ export const athenaAdapter = (
     }
 
     if (!dbClient || version !== lastDbConfigVersion) {
-      dbClient = createClient(url, apiKey, { client });
+      dbClient = createClient(url, apiKey, {
+        client,
+        ...(config.headers && { headers: config.headers }),
+      } as any);
       lastDbConfigVersion = version;
     }
 

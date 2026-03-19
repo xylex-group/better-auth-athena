@@ -5,6 +5,7 @@ import {
   isMissingColumnError,
   snakeMapper,
   identityMapper,
+  filterRowsByWhere,
 } from "../utils";
 
 export type FindManyDeps = {
@@ -97,6 +98,20 @@ export function findManyMethod(deps: FindManyDeps) {
       return applySort(betterAuthRows);
     };
 
+    const applyLimitOffset = (rows: T[]) => {
+      if (limit === undefined && offset === undefined) return rows;
+      const off = offset ?? 0;
+      const end = limit !== undefined ? off + limit : undefined;
+      return rows.slice(off, end);
+    };
+
+    const processRows = (rawRows: Record<string, unknown>[]) => {
+      const filtered = where?.length
+        ? filterRowsByWhere(rawRows, where)
+        : rawRows;
+      return applyLimitOffset(mapAndSort(filtered));
+    };
+
     if (first.error) {
       if (isMissingColumnError(first.error)) {
         const retry = await run(identityMapper);
@@ -105,7 +120,7 @@ export function findManyMethod(deps: FindManyDeps) {
             `[AthenaAdapter] findMany on "${model}" failed: ${retry.error}`,
           );
         }
-        return mapAndSort(pickRows(retry.result));
+        return processRows(pickRows(retry.result));
       }
 
       throw new Error(
@@ -113,6 +128,6 @@ export function findManyMethod(deps: FindManyDeps) {
       );
     }
 
-    return mapAndSort(pickRows(first.result));
+    return processRows(pickRows(first.result));
   };
 }

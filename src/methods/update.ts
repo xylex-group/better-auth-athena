@@ -21,7 +21,7 @@ export function updateMethod(deps: UpdateDeps) {
     const updateData = toDbRecord(update as Record<string, unknown>);
     let builder = db
       .from(model)
-      .update({ data: updateData, set: updateData }) as AthenaFilterBuilder;
+      .update({ set: updateData }) as AthenaFilterBuilder;
 
     for (const clause of where) {
       builder = applyWhere(

@@ -131,7 +131,6 @@ contractDescribe("athenaAdapter (gateway contract e2e)", () => {
     // { table_name, update_body, conditions, columns, ... }
     expect(lastUpdatePayload.table_name).toBe("account");
     expect(lastUpdatePayload.update_body).toEqual({
-      data: { user_id: "u_1" },
       set: { user_id: "u_1" },
     });
   });

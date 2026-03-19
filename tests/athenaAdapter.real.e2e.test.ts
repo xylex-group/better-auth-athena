@@ -100,11 +100,16 @@ describe.skipIf(!hasRealConfig)("athenaAdapter (real database e2e)", () => {
 
   beforeAll(() => {
     const { url, apiKey } = getConfig();
+    const headers: Record<string, string> | undefined =
+      process.env.ATHENA_E2E_X_USER_ID != null
+        ? { "X-User-Id": process.env.ATHENA_E2E_X_USER_ID }
+        : undefined;
     adapter = athenaAdapter({
-      url: "https://mirror2.athena-db.com",
-      apiKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYXV0aGVudGljYXRlZCIsImVtYWlsIjoiZmxvcmlzQHh5bGV4LmFpIiwiZXhwIjoyNDk3MDMzNjY2fQ.LdPqTGaFq5pTokW1DA81WFjmG4nReJCOSKr3mFtXNoA",
+      url,
+      apiKey,
       client: "athena_logging",
       watchConfig: false,
+      ...(headers && { headers }),
     }) as unknown as Adapter;
     runId = `e2e-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
   });
