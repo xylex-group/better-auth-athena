@@ -180,7 +180,12 @@ describe("athenaAdapter (e2e)", () => {
       expect.arrayContaining([
         {
           method: "update",
-          args: [{ set: { user_id: "u_1" } }],
+          args: [
+            {
+              data: { user_id: "u_1" },
+              set: { user_id: "u_1" },
+            },
+          ],
         },
         { method: "eq", args: ["id", "row_1"] },
         { method: "select", args: [undefined] },

@@ -182,7 +182,10 @@ describe("athenaAdapter", () => {
 
     expect(builder.calls).toEqual(
       expect.arrayContaining([
-        { method: "update", args: [{ set: { name: "Sam" } }] },
+        {
+          method: "update",
+          args: [{ data: { name: "Sam" }, set: { name: "Sam" } }],
+        },
         { method: "like", args: ["name", "%sam%"] },
         { method: "not", args: ["id", "in", ["1", "2"]] },
       ]),

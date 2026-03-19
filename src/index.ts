@@ -129,7 +129,7 @@ export const athenaAdapter = (
     return dbClient;
   }
 
-  const deps = { ensureDbClient };
+  const deps = { ensureDbClient, headers: config.headers };
 
   return createAdapterFactory({
     config: {

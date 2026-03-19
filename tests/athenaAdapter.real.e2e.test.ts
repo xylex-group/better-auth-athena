@@ -100,16 +100,27 @@ describe.skipIf(!hasRealConfig)("athenaAdapter (real database e2e)", () => {
 
   beforeAll(() => {
     const { url, apiKey } = getConfig();
-    const headers: Record<string, string> | undefined =
-      process.env.ATHENA_E2E_X_USER_ID != null
-        ? { "X-User-Id": process.env.ATHENA_E2E_X_USER_ID }
-        : undefined;
+    const headers: Record<string, string> = {};
+    const defaultHeaderValue =
+      process.env.ATHENA_CLIENT ??
+      process.env.ATHENA_E2E_X_USER_ID ??
+      "athena-logging";
+
+    // Ensure the delete contract header(s) exist even when you don't set
+    // ATHENA_E2E_X_COMPANY_ID / ATHENA_E2E_X_USER_ID.
+    const userId = process.env.ATHENA_E2E_X_USER_ID ?? defaultHeaderValue;
+    const companyId = process.env.ATHENA_E2E_X_COMPANY_ID ?? userId;
+
+    headers["X-User-Id"] = userId;
+    headers["X-Company-Id"] = companyId;
+    headers["X-Organization-Id"] = companyId;
+
     adapter = athenaAdapter({
       url,
       apiKey,
       client: "athena_logging",
       watchConfig: false,
-      ...(headers && { headers }),
+      headers,
     }) as unknown as Adapter;
     runId = `e2e-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
   });

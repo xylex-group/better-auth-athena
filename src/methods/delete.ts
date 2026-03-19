@@ -3,10 +3,11 @@ import { applyWhere, isSuccessMessageInError } from "../utils";
 
 export type DeleteDeps = {
   ensureDbClient: () => any;
+  headers?: Record<string, string>;
 };
 
 export function deleteMethod(deps: DeleteDeps) {
-  const { ensureDbClient } = deps;
+  const { ensureDbClient, headers } = deps;
 
   return async function del({
     model,
@@ -27,7 +28,9 @@ export function deleteMethod(deps: DeleteDeps) {
       );
     }
 
-    const { error } = await (builder as any).delete();
+    const { error } = await (builder as any).delete(
+      headers ? ({ headers } as any) : undefined,
+    );
 
     if (error && !isSuccessMessageInError(error)) {
       throw new Error(

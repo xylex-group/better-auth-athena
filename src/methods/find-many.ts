@@ -92,24 +92,25 @@ export function findManyMethod(deps: FindManyDeps) {
     };
 
     const mapAndSort = (rows: Record<string, unknown>[]) => {
-      const betterAuthRows = rows.map((r) =>
-        mapRowToBetterAuth(r),
+      const betterAuthRows = rows.map((r) => mapRowToBetterAuth(r)) as unknown as T[];
+
+      if (!where?.length) return applySort(betterAuthRows);
+
+      const filtered = filterRowsByWhere(
+        betterAuthRows as unknown as Record<string, unknown>[],
+        where,
       ) as unknown as T[];
-      return applySort(betterAuthRows);
-    };
 
-    const applyLimitOffset = (rows: T[]) => {
-      if (limit === undefined && offset === undefined) return rows;
-      const off = offset ?? 0;
-      const end = limit !== undefined ? off + limit : undefined;
-      return rows.slice(off, end);
-    };
+      // If filtering changed the row set, the gateway likely ignored `where`
+      // (or applied it before limiting/offset). In that case, re-apply sorting
+      // and slice using the requested offset/limit.
+      if (filtered.length !== betterAuthRows.length) {
+        const off = offset ?? 0;
+        const end = limit !== undefined ? off + limit : undefined;
+        return applySort(filtered).slice(off, end);
+      }
 
-    const processRows = (rawRows: Record<string, unknown>[]) => {
-      const filtered = where?.length
-        ? filterRowsByWhere(rawRows, where)
-        : rawRows;
-      return applyLimitOffset(mapAndSort(filtered));
+      return applySort(filtered);
     };
 
     if (first.error) {
@@ -120,7 +121,7 @@ export function findManyMethod(deps: FindManyDeps) {
             `[AthenaAdapter] findMany on "${model}" failed: ${retry.error}`,
           );
         }
-        return processRows(pickRows(retry.result));
+        return mapAndSort(pickRows(retry.result));
       }
 
       throw new Error(
@@ -128,6 +129,6 @@ export function findManyMethod(deps: FindManyDeps) {
       );
     }
 
-    return processRows(pickRows(first.result));
+    return mapAndSort(pickRows(first.result));
   };
 }

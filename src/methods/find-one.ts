@@ -5,6 +5,7 @@ import {
   isMissingColumnError,
   snakeMapper,
   identityMapper,
+  filterRowsByWhere,
 } from "../utils";
 
 export type FindOneDeps = {
@@ -78,6 +79,13 @@ export function findOneMethod(deps: FindOneDeps) {
         ? [first.result]
         : [];
     const row = rows[0] ?? null;
-    return (row ? mapRowToBetterAuth(row as T) : null) as T | null;
+    if (!row) return null;
+
+    const mapped = mapRowToBetterAuth(row as T) as T;
+    const filtered = filterRowsByWhere(
+      [mapped as unknown as Record<string, unknown>],
+      where,
+    );
+    return (filtered[0] ? mapped : null) as T | null;
   };
 }
