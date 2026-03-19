@@ -33,7 +33,10 @@ export function findManyMethod(deps: FindManyDeps) {
   }) {
     const db = ensureDbClient();
 
-    const run = async (columnMapper: (col: string) => string) => {
+    const run = async (
+      columnMapper: (col: string) => string,
+      opts?: { skipWhere?: boolean; limitOverride?: number; offsetOverride?: number },
+    ) => {
       const columns =
         select && select.length > 0
           ? select.map((c) => columnMapper(c)).join(", ")
@@ -41,7 +44,7 @@ export function findManyMethod(deps: FindManyDeps) {
 
       let builder = db.from(model).select(columns);
 
-      if (where) {
+      if (!opts?.skipWhere && where) {
         for (const clause of where) {
           builder = applyWhere(
             builder,
@@ -53,12 +56,15 @@ export function findManyMethod(deps: FindManyDeps) {
         }
       }
 
-      if (limit !== undefined) {
-        builder = builder.limit(limit);
+      const effectiveLimit = opts?.limitOverride ?? limit;
+      const effectiveOffset = opts?.offsetOverride ?? offset;
+
+      if (effectiveLimit !== undefined) {
+        builder = builder.limit(effectiveLimit);
       }
 
-      if (offset !== undefined) {
-        builder = builder.offset(offset);
+      if (effectiveOffset !== undefined) {
+        builder = builder.offset(effectiveOffset);
       }
 
       const { data: result, error } = await builder;
@@ -113,6 +119,13 @@ export function findManyMethod(deps: FindManyDeps) {
       return applySort(filtered);
     };
 
+    const postFilterAndSlice = (rows: Record<string, unknown>[]) => {
+      const mappedSorted = mapAndSort(rows);
+      const off = offset ?? 0;
+      const end = limit !== undefined ? off + limit : undefined;
+      return mappedSorted.slice(off, end);
+    };
+
     if (first.error) {
       if (isMissingColumnError(first.error)) {
         const retry = await run(identityMapper);
@@ -121,7 +134,18 @@ export function findManyMethod(deps: FindManyDeps) {
             `[AthenaAdapter] findMany on "${model}" failed: ${retry.error}`,
           );
         }
-        return mapAndSort(pickRows(retry.result));
+        const retryRows = pickRows(retry.result);
+        // Decisive fallback: if gateway-side `where` yields empty/insufficient rows,
+        // fetch a broader candidate set and apply `where`/sort/offset/limit in-memory.
+        if (where?.length) {
+          const broad = await run(identityMapper, {
+            skipWhere: true,
+            limitOverride: Math.max((offset ?? 0) + (limit ?? 0) + 50, 200),
+            offsetOverride: 0,
+          });
+          if (!broad.error) return postFilterAndSlice(pickRows(broad.result));
+        }
+        return mapAndSort(retryRows);
       }
 
       throw new Error(
@@ -129,6 +153,15 @@ export function findManyMethod(deps: FindManyDeps) {
       );
     }
 
-    return mapAndSort(pickRows(first.result));
+    const firstRows = pickRows(first.result);
+    if (where?.length) {
+      const broad = await run(snakeMapper, {
+        skipWhere: true,
+        limitOverride: Math.max((offset ?? 0) + (limit ?? 0) + 50, 200),
+        offsetOverride: 0,
+      });
+      if (!broad.error) return postFilterAndSlice(pickRows(broad.result));
+    }
+    return mapAndSort(firstRows);
   };
 }

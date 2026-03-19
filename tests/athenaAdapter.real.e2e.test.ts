@@ -128,15 +128,19 @@ describe.skipIf(!hasRealConfig)("athenaAdapter (real database e2e)", () => {
   afterAll(async () => {
     if (!adapter || createdIds.length === 0) return;
     try {
-      const n = await adapter.deleteMany({
+      const cleanupPromise = adapter.deleteMany({
         model: MODEL,
         where: [{ field: "id", operator: "in", value: createdIds }],
       });
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("cleanup timeout")), 4_000),
+      );
+      const n = await Promise.race([cleanupPromise, timeoutPromise]);
       expect(n).toBeGreaterThanOrEqual(0);
     } catch {
       // Best-effort cleanup
     }
-  });
+  }, 15_000);
 
   it("create: inserts a row and returns it in camelCase", async () => {
     const id = `${runId}-create`;
