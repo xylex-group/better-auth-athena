@@ -15,7 +15,7 @@ export type AthenaGlobalConfig = {
 // `url`/`apiKey` are still unset when used.
 export const defaultAthenaGlobalConfig: AthenaGlobalConfig = {
   athena: {
-    url: "https://mirror2.athena-db.com",
+    url: "https://mirror3.athena-db.com",
     apiKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYXV0aGVudGljYXRlZCIsImVtYWlsIjoiZmxvcmlzQHh5bGV4LmFpIiwiZXhwIjoyNDk3MDMzNjY2fQ.LdPqTGaFq5pTokW1DA81WFjmG4nReJCOSKr3mFtXNoA",
     client: "athena_logging",
   },

@@ -12,6 +12,7 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { randomUUID } from "node:crypto";
 
 if (typeof (vi as any).hoisted !== "function") {
   (vi as any).hoisted = (fn: () => unknown) => fn();
@@ -102,16 +103,24 @@ describe("athena gateway diagnostics (real)", () => {
 
   beforeEach(async () => {
     // Force a clean table so each test is independent and decisive.
-    const purge = await direct.from(MODEL).delete();
-    expect(purge.error).toBeNull();
+    // Athena client requires `resource_id` for delete, so purge row-by-row.
+    const all = await direct.from(MODEL).select("id").limit(5000);
+    expect(all.error).toBeNull();
+    const rows = Array.isArray(all.data) ? all.data : [];
+    for (const row of rows) {
+      const id = (row as any)?.id;
+      if (!id) continue;
+      const del = await direct.from(MODEL).delete({ resourceId: String(id) });
+      expect(del.error).toBeNull();
+    }
   }, 20_000);
 
   it("findMany where+limit: gateway semantics vs adapter", async () => {
-    const ids = [`${runId}-fm-1`, `${runId}-fm-2`, `${runId}-fm-3`];
+    const ids = [randomUUID(), randomUUID(), randomUUID()];
     const rowsToInsert = [
-      { id: ids[0], name: "C", email: "c@diag.test" },
-      { id: ids[1], name: "A", email: "a@diag.test" },
-      { id: ids[2], name: "B", email: "b@diag.test" },
+      { id: ids[0], uuid: ids[0], name: "C", email: "c@diag.test" },
+      { id: ids[1], uuid: ids[1], name: "A", email: "a@diag.test" },
+      { id: ids[2], uuid: ids[2], name: "B", email: "b@diag.test" },
     ];
 
     for (const r of rowsToInsert) {
@@ -143,9 +152,10 @@ describe("athena gateway diagnostics (real)", () => {
   }, 20_000);
 
   it("findMany where eq: gateway semantics vs adapter", async () => {
-    const id = `${runId}-eq-1`;
+    const id = randomUUID();
     await direct.from(MODEL).insert({
       id,
+      uuid: id,
       name: "Single",
       email: "single@diag.test",
     } as any);
@@ -170,9 +180,10 @@ describe("athena gateway diagnostics (real)", () => {
   }, 20_000);
 
   it("update payload: gateway semantics vs adapter", async () => {
-    const id = `${runId}-upd-1`;
+    const id = randomUUID();
     await direct.from(MODEL).insert({
       id,
+      uuid: id,
       name: "Old",
       email: "old@diag.test",
     } as any);
@@ -207,9 +218,10 @@ describe("athena gateway diagnostics (real)", () => {
   }, 20_000);
 
   it("extended columns: direct insert -> adapter read", async () => {
-    const id = `${runId}-ext-direct`;
+    const id = randomUUID();
     const directPayload = {
       id,
+      uuid: id,
       name: "ExtDirect",
       email: "ext-direct@diag.test",
       number: 42.5,
@@ -233,9 +245,10 @@ describe("athena gateway diagnostics (real)", () => {
   }, 20_000);
 
   it("extended columns: adapter insert -> direct read", async () => {
-    const id = `${runId}-ext-adapter`;
+    const id = randomUUID();
     const adapterPayload = {
       id,
+      uuid: id,
       name: "ExtAdapter",
       email: "ext-adapter@diag.test",
       number: 99.01,
@@ -261,9 +274,10 @@ describe("athena gateway diagnostics (real)", () => {
   }, 20_000);
 
   it("extended columns: adapter update for number/text/jsonb", async () => {
-    const id = `${runId}-ext-update`;
+    const id = randomUUID();
     await direct.from(MODEL).insert({
       id,
+      uuid: id,
       name: "Before",
       email: "before@diag.test",
       number: 1,

@@ -140,7 +140,7 @@ export function findManyMethod(deps: FindManyDeps) {
         if (where?.length) {
           const broad = await run(identityMapper, {
             skipWhere: true,
-            limitOverride: Math.max((offset ?? 0) + (limit ?? 0) + 50, 200),
+            limitOverride: Math.max((offset ?? 0) + (limit ?? 0) + 500, 5000),
             offsetOverride: 0,
           });
           if (!broad.error) return postFilterAndSlice(pickRows(broad.result));
@@ -157,7 +157,7 @@ export function findManyMethod(deps: FindManyDeps) {
     if (where?.length) {
       const broad = await run(snakeMapper, {
         skipWhere: true,
-        limitOverride: Math.max((offset ?? 0) + (limit ?? 0) + 50, 200),
+        limitOverride: Math.max((offset ?? 0) + (limit ?? 0) + 500, 5000),
         offsetOverride: 0,
       });
       if (!broad.error) return postFilterAndSlice(pickRows(broad.result));

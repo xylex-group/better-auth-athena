@@ -15,6 +15,7 @@
  */
 
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { randomUUID } from "node:crypto";
 
 if (typeof (vi as any).hoisted !== "function") {
   (vi as any).hoisted = (fn: () => unknown) => fn();
@@ -143,13 +144,14 @@ describe.skipIf(!hasRealConfig)("athenaAdapter (real database e2e)", () => {
   }, 15_000);
 
   it("create: inserts a row and returns it in camelCase", async () => {
-    const id = `${runId}-create`;
+    const id = randomUUID();
     createdIds.push(id);
     const createdAt = new Date().toISOString();
     const row = await adapter.create({
       model: MODEL,
       data: {
         id,
+        uuid: id,
         name: "Alice",
         email: "alice@e2e.test",
         createdAt,
@@ -163,11 +165,11 @@ describe.skipIf(!hasRealConfig)("athenaAdapter (real database e2e)", () => {
   });
 
   it("findOne: returns row by id (eq), null for missing", async () => {
-    const id = `${runId}-findOne`;
+    const id = randomUUID();
     createdIds.push(id);
     await adapter.create({
       model: MODEL,
-      data: { id, name: "Bob", email: "bob@e2e.test" },
+      data: { id, uuid: id, name: "Bob", email: "bob@e2e.test" },
     });
     const found = await adapter.findOne({
       model: MODEL,
@@ -179,17 +181,17 @@ describe.skipIf(!hasRealConfig)("athenaAdapter (real database e2e)", () => {
 
     const missing = await adapter.findOne({
       model: MODEL,
-      where: [{ field: "id", operator: "eq", value: "nonexistent-id-xyz" }],
+      where: [{ field: "id", operator: "eq", value: randomUUID() }],
     });
     expect(missing).toBeNull();
   });
 
   it("findOne: select specific columns", async () => {
-    const id = `${runId}-select`;
+    const id = randomUUID();
     createdIds.push(id);
     await adapter.create({
       model: MODEL,
-      data: { id, name: "Carol", email: "carol@e2e.test" },
+      data: { id, uuid: id, name: "Carol", email: "carol@e2e.test" },
     });
     const row = await adapter.findOne({
       model: MODEL,
@@ -203,20 +205,19 @@ describe.skipIf(!hasRealConfig)("athenaAdapter (real database e2e)", () => {
   });
 
   it("findMany: limit, offset, sortBy", async () => {
-    const base = `${runId}-fm`;
-    const ids = [`${base}-1`, `${base}-2`, `${base}-3`];
+    const ids = [randomUUID(), randomUUID(), randomUUID()];
     createdIds.push(...ids);
     await adapter.create({
       model: MODEL,
-      data: { id: ids[0], name: "C", email: "c@e2e.test" },
+      data: { id: ids[0], uuid: ids[0], name: "C", email: "c@e2e.test" },
     });
     await adapter.create({
       model: MODEL,
-      data: { id: ids[1], name: "A", email: "a@e2e.test" },
+      data: { id: ids[1], uuid: ids[1], name: "A", email: "a@e2e.test" },
     });
     await adapter.create({
       model: MODEL,
-      data: { id: ids[2], name: "B", email: "b@e2e.test" },
+      data: { id: ids[2], uuid: ids[2], name: "B", email: "b@e2e.test" },
     });
 
     const all = await adapter.findMany({
@@ -240,27 +241,28 @@ describe.skipIf(!hasRealConfig)("athenaAdapter (real database e2e)", () => {
   });
 
   it("findMany: where eq and in", async () => {
-    const id = `${runId}-fmeq`;
+    const id = randomUUID();
+    const uniqueName = `${runId}-Single`;
     createdIds.push(id);
     await adapter.create({
       model: MODEL,
-      data: { id, name: "Single", email: "single@e2e.test" },
+      data: { id, uuid: id, name: uniqueName, email: "single@e2e.test" },
     });
     const rows = await adapter.findMany({
       model: MODEL,
-      where: [{ field: "name", operator: "eq", value: "Single" }],
+      where: [{ field: "name", operator: "eq", value: uniqueName }],
       limit: 10,
     });
     expect(rows.length).toBe(1);
-    expect(rows[0].name).toBe("Single");
+    expect(rows[0].name).toBe(uniqueName);
   });
 
   it("update: updates one row", async () => {
-    const id = `${runId}-upd`;
+    const id = randomUUID();
     createdIds.push(id);
     await adapter.create({
       model: MODEL,
-      data: { id, name: "Old", email: "old@e2e.test" },
+      data: { id, uuid: id, name: "Old", email: "old@e2e.test" },
     });
     const updated = await adapter.update({
       model: MODEL,
@@ -278,17 +280,16 @@ describe.skipIf(!hasRealConfig)("athenaAdapter (real database e2e)", () => {
   });
 
   it("updateMany: updates multiple rows", async () => {
-    const base = `${runId}-um`;
-    const id1 = `${base}-1`;
-    const id2 = `${base}-2`;
+    const id1 = randomUUID();
+    const id2 = randomUUID();
     createdIds.push(id1, id2);
     await adapter.create({
       model: MODEL,
-      data: { id: id1, name: "UMA", email: "uma@e2e.test" },
+      data: { id: id1, uuid: id1, name: "UMA", email: "uma@e2e.test" },
     });
     await adapter.create({
       model: MODEL,
-      data: { id: id2, name: "UMA", email: "umb@e2e.test" },
+      data: { id: id2, uuid: id2, name: "UMA", email: "umb@e2e.test" },
     });
     const n = await adapter.updateMany({
       model: MODEL,
@@ -306,17 +307,16 @@ describe.skipIf(!hasRealConfig)("athenaAdapter (real database e2e)", () => {
   });
 
   it("count: returns correct count", async () => {
-    const base = `${runId}-cnt`;
-    const id1 = `${base}-1`;
-    const id2 = `${base}-2`;
+    const id1 = randomUUID();
+    const id2 = randomUUID();
     createdIds.push(id1, id2);
     await adapter.create({
       model: MODEL,
-      data: { id: id1, name: "CountA", email: "ca@e2e.test" },
+      data: { id: id1, uuid: id1, name: "CountA", email: "ca@e2e.test" },
     });
     await adapter.create({
       model: MODEL,
-      data: { id: id2, name: "CountA", email: "cb@e2e.test" },
+      data: { id: id2, uuid: id2, name: "CountA", email: "cb@e2e.test" },
     });
 
     const n = await adapter.count({
@@ -327,17 +327,17 @@ describe.skipIf(!hasRealConfig)("athenaAdapter (real database e2e)", () => {
 
     const zero = await adapter.count({
       model: MODEL,
-      where: [{ field: "id", operator: "eq", value: "nonexistent-count-id" }],
+      where: [{ field: "id", operator: "eq", value: randomUUID() }],
     });
     expect(zero).toBe(0);
   });
 
   it("delete: removes one row", async () => {
-    const id = `${runId}-del`;
+    const id = randomUUID();
     createdIds.push(id);
     await adapter.create({
       model: MODEL,
-      data: { id, name: "ToDelete", email: "del@e2e.test" },
+      data: { id, uuid: id, name: "ToDelete", email: "del@e2e.test" },
     });
     await adapter.delete({
       model: MODEL,
@@ -354,17 +354,16 @@ describe.skipIf(!hasRealConfig)("athenaAdapter (real database e2e)", () => {
   });
 
   it("deleteMany: removes multiple rows", async () => {
-    const base = `${runId}-dm`;
-    const id1 = `${base}-1`;
-    const id2 = `${base}-2`;
+    const id1 = randomUUID();
+    const id2 = randomUUID();
     createdIds.push(id1, id2);
     await adapter.create({
       model: MODEL,
-      data: { id: id1, name: "DM1", email: "dm1@e2e.test" },
+      data: { id: id1, uuid: id1, name: "DM1", email: "dm1@e2e.test" },
     });
     await adapter.create({
       model: MODEL,
-      data: { id: id2, name: "DM2", email: "dm2@e2e.test" },
+      data: { id: id2, uuid: id2, name: "DM2", email: "dm2@e2e.test" },
     });
     const n = await adapter.deleteMany({
       model: MODEL,
