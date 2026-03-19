@@ -1,9 +1,8 @@
-import type { SupabaseClient as AthenaClient } from "@xylex-group/athena";
-import type { WhereClause } from "../utils";
+import type { WhereClause, AthenaFilterBuilder } from "../utils";
 import { applyWhere } from "../utils";
 
 export type DeleteManyDeps = {
-  ensureDbClient: () => AthenaClient;
+  ensureDbClient: () => any;
 };
 
 export function deleteManyMethod(deps: DeleteManyDeps) {
@@ -17,7 +16,7 @@ export function deleteManyMethod(deps: DeleteManyDeps) {
     where: WhereClause[];
   }) {
     const db = ensureDbClient();
-    let builder = db.from(model);
+    let builder = db.from(model) as AthenaFilterBuilder;
 
     for (const clause of where) {
       builder = applyWhere(
@@ -28,7 +27,7 @@ export function deleteManyMethod(deps: DeleteManyDeps) {
       );
     }
 
-    const { data: result, error } = await builder.delete().select();
+    const { data: result, error } = await (builder as any).delete().select();
 
     if (error) {
       throw new Error(

@@ -101,9 +101,9 @@ describe.skipIf(!hasRealConfig)("athenaAdapter (real database e2e)", () => {
   beforeAll(() => {
     const { url, apiKey } = getConfig();
     adapter = athenaAdapter({
-      url,
-      apiKey,
-      client: "athena-logging",
+      url: "https://mirror2.athena-db.com",
+      apiKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYXV0aGVudGljYXRlZCIsImVtYWlsIjoiZmxvcmlzQHh5bGV4LmFpIiwiZXhwIjoyNDk3MDMzNjY2fQ.LdPqTGaFq5pTokW1DA81WFjmG4nReJCOSKr3mFtXNoA",
+      client: "athena_logging",
       watchConfig: false,
     }) as unknown as Adapter;
     runId = `e2e-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;

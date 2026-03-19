@@ -99,7 +99,7 @@ describe("athenaAdapter (e2e)", () => {
     createClient.mockReturnValue({ from });
 
     const adapter = athenaAdapter({
-      url: "https://mirror2.athena-db.com",
+      url: "https://mirror1.athena-db.com",
       apiKey: "secret",
     }) as unknown as TestAdapter;
 
@@ -138,7 +138,7 @@ describe("athenaAdapter (e2e)", () => {
     createClient.mockReturnValue({ from });
 
     const adapter = athenaAdapter({
-      url: "https://mirror2.athena-db.com",
+      url: "https://mirror1.athena-db.com",
       apiKey: "secret",
     }) as unknown as TestAdapter;
 
@@ -166,7 +166,7 @@ describe("athenaAdapter (e2e)", () => {
     createClient.mockReturnValue({ from });
 
     const adapter = athenaAdapter({
-      url: "https://mirror2.athena-db.com",
+      url: "https://mirror1.athena-db.com",
       apiKey: "secret",
     }) as unknown as TestAdapter;
 

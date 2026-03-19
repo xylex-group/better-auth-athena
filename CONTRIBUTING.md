@@ -25,7 +25,7 @@ To run them:
 1. Create the test table (run the SQL in `tests/fixtures/athena_adapter_e2e.sql`) on the database your Athena gateway uses. The tests use client `athena-logging` and table `athena_adapter_e2e`.
 2. Set environment variables:
    ```bash
-   export ATHENA_URL="https://mirror3.athena-db.com"
+   export ATHENA_URL="https://mirror2.athena-db.com"
    export ATHENA_API_KEY="x"
    ```
 3. Run the real e2e suite:

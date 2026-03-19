@@ -136,7 +136,7 @@ describe("athenaAdapter", () => {
     createClient.mockReturnValue({ from });
 
     const adapter = athenaAdapter({
-      url: "https://mirror2.athena-db.com",
+      url: "https://mirror1.athena-db.com",
       apiKey: "secret",
       client: "web",
     }) as unknown as TestAdapter;
@@ -148,7 +148,7 @@ describe("athenaAdapter", () => {
 
     expect(result).toEqual({ id: "1", name: "Ada" });
     expect(createClient).toHaveBeenCalledWith(
-      "https://mirror2.athena-db.com",
+      "https://mirror1.athena-db.com",
       "secret",
       { client: "web" },
     );
@@ -167,7 +167,7 @@ describe("athenaAdapter", () => {
     createClient.mockReturnValue({ from });
 
     const adapter = athenaAdapter({
-      url: "https://mirror2.athena-db.com",
+      url: "https://mirror1.athena-db.com",
       apiKey: "secret",
     }) as unknown as TestAdapter;
 
@@ -201,7 +201,7 @@ describe("athenaAdapter", () => {
     createClient.mockReturnValue({ from });
 
     const adapter = athenaAdapter({
-      url: "https://mirror2.athena-db.com",
+      url: "https://mirror1.athena-db.com",
       apiKey: "secret",
     }) as unknown as TestAdapter;
 

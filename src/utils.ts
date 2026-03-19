@@ -76,6 +76,8 @@ export type AthenaFilterBuilder = {
   in(col: string, vals: unknown[]): AthenaFilterBuilder;
   not(col: string, op?: string, val?: unknown): AthenaFilterBuilder;
   like(col: string, val: string): AthenaFilterBuilder;
+  delete?(): { select(): Promise<{ data: unknown; error: unknown }> };
+  select?(columns?: string): Promise<{ data: unknown; error: unknown }> | { select(): Promise<{ data: unknown; error: unknown }> };
 };
 
 export type WhereClause = { field: string; operator: string; value: unknown };
@@ -83,39 +85,39 @@ export type WhereClause = { field: string; operator: string; value: unknown };
 const defaultColumnMapper = (col: string) =>
   hasUppercase(col) ? toSnakeCase(col) : col;
 
-export function applyWhere<T extends AthenaFilterBuilder>(
-  builder: T,
+export function applyWhere(
+  builder: AthenaFilterBuilder,
   field: string,
   operator: string,
   value: unknown,
   columnMapper: (col: string) => string = defaultColumnMapper,
-): T {
+): AthenaFilterBuilder {
   const dbField = columnMapper(field);
   switch (operator) {
     case "eq":
-      return builder.eq(dbField, value) as T;
+      return builder.eq(dbField, value);
     case "ne":
-      return builder.neq(dbField, value) as T;
+      return builder.neq(dbField, value);
     case "gt":
-      return builder.gt(dbField, value) as T;
+      return builder.gt(dbField, value);
     case "gte":
-      return builder.gte(dbField, value) as T;
+      return builder.gte(dbField, value);
     case "lt":
-      return builder.lt(dbField, value) as T;
+      return builder.lt(dbField, value);
     case "lte":
-      return builder.lte(dbField, value) as T;
+      return builder.lte(dbField, value);
     case "in":
-      return builder.in(dbField, value as unknown[]) as T;
+      return builder.in(dbField, value as unknown[]);
     case "not_in":
-      return builder.not(dbField, "in", value) as T;
+      return builder.not(dbField, "in", value);
     case "contains":
-      return builder.like(dbField, `%${value}%`) as T;
+      return builder.like(dbField, `%${value}%`);
     case "starts_with":
-      return builder.like(dbField, `${value}%`) as T;
+      return builder.like(dbField, `${value}%`);
     case "ends_with":
-      return builder.like(dbField, `%${value}`) as T;
+      return builder.like(dbField, `%${value}`);
     default:
-      return builder.eq(dbField, value) as T;
+      return builder.eq(dbField, value);
   }
 }
 

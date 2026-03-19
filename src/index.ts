@@ -4,10 +4,7 @@ import {
   type DBAdapterDebugLogOption,
 } from "better-auth/adapters";
 import type { BetterAuthOptions } from "better-auth";
-import {
-  createClient,
-  type SupabaseClient as AthenaClient,
-} from "@xylex-group/athena";
+import { createClient } from "@xylex-group/athena";
 import { getAthenaGlobalConfig } from "./config";
 import { createMethod } from "./methods/create";
 import { updateMethod } from "./methods/update";
@@ -81,7 +78,7 @@ export interface AthenaAdapterConfig {
 export const athenaAdapter = (
   config: AthenaAdapterConfig,
 ): AdapterFactory<BetterAuthOptions> => {
-  let dbClient: AthenaClient | null = null;
+  let dbClient: any | null = null;
   let lastDbConfigVersion = -1;
 
   const shouldUseFixedConfig =
@@ -90,7 +87,7 @@ export const athenaAdapter = (
     typeof config.apiKey === "string" &&
     config.apiKey.length > 0;
 
-  function ensureDbClient(): AthenaClient {
+  function ensureDbClient(): any {
     if (shouldUseFixedConfig) {
       if (!dbClient) {
         dbClient = createClient(config.url!, config.apiKey!, {

@@ -1,8 +1,7 @@
-import type { SupabaseClient as AthenaClient } from "@xylex-group/athena";
 import { toDbRecord, mapRowToBetterAuth } from "../utils";
 
 export type CreateDeps = {
-  ensureDbClient: () => AthenaClient;
+  ensureDbClient: () => any;
 };
 
 export function createMethod(deps: CreateDeps) {
@@ -24,9 +23,7 @@ export function createMethod(deps: CreateDeps) {
       .select();
 
     if (error) {
-      throw new Error(
-        `[AthenaAdapter] create on "${model}" failed: ${error}`,
-      );
+      throw new Error(`[AthenaAdapter] create on "${model}" failed: ${error}`);
     }
 
     const row = Array.isArray(result) ? result[0] : result;

@@ -1,4 +1,3 @@
-import type { SupabaseClient as AthenaClient } from "@xylex-group/athena";
 import type { WhereClause } from "../utils";
 import {
   applyWhere,
@@ -8,7 +7,7 @@ import {
 } from "../utils";
 
 export type CountDeps = {
-  ensureDbClient: () => AthenaClient;
+  ensureDbClient: () => any;
 };
 
 export function countMethod(deps: CountDeps) {

@@ -1,9 +1,8 @@
-import type { SupabaseClient as AthenaClient } from "@xylex-group/athena";
-import type { WhereClause } from "../utils";
+import type { WhereClause, AthenaFilterBuilder } from "../utils";
 import { toDbRecord, applyWhere } from "../utils";
 
 export type UpdateManyDeps = {
-  ensureDbClient: () => AthenaClient;
+  ensureDbClient: () => any;
 };
 
 export function updateManyMethod(deps: UpdateManyDeps) {
@@ -22,7 +21,7 @@ export function updateManyMethod(deps: UpdateManyDeps) {
     const updateData = toDbRecord(update);
     let builder = db
       .from(model)
-      .update({ data: updateData, set: updateData });
+      .update({ data: updateData, set: updateData }) as AthenaFilterBuilder;
 
     for (const clause of where) {
       builder = applyWhere(
@@ -33,7 +32,7 @@ export function updateManyMethod(deps: UpdateManyDeps) {
       );
     }
 
-    const { data: result, error } = await builder.select();
+    const { data: result, error } = await (builder as any).select();
 
     if (error) {
       throw new Error(
