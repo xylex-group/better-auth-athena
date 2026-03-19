@@ -38,7 +38,10 @@ function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function deepMerge<T extends Record<string, unknown>>(base: T, partial: unknown): T {
+function deepMerge<T extends Record<string, unknown>>(
+  base: T,
+  partial: unknown,
+): T {
   if (!isObject(partial)) return base;
   const out: Record<string, unknown> = { ...base };
   for (const [k, v] of Object.entries(partial)) {
@@ -113,4 +116,3 @@ export function getAthenaGlobalConfig(options?: {
 
   return { config: cached, version };
 }
-

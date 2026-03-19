@@ -21,7 +21,8 @@ if (typeof (vi as any).hoisted !== "function") {
 }
 
 const { createAdapterFactory } = vi.hoisted(() => ({
-  createAdapterFactory: (options: { adapter: () => unknown }) => options.adapter(),
+  createAdapterFactory: (options: { adapter: () => unknown }) =>
+    options.adapter(),
 }));
 
 vi.mock("better-auth/adapters", () => ({
@@ -37,7 +38,9 @@ function getConfig(): { url: string; apiKey: string } {
   const url = process.env.ATHENA_URL ?? "";
   const apiKey = process.env.ATHENA_API_KEY ?? "";
   if (!url || !apiKey) {
-    throw new Error("ATHENA_URL and ATHENA_API_KEY must be set for real e2e tests");
+    throw new Error(
+      "ATHENA_URL and ATHENA_API_KEY must be set for real e2e tests",
+    );
   }
   return { url, apiKey };
 }
@@ -183,9 +186,18 @@ describe.skipIf(!hasRealConfig)("athenaAdapter (real database e2e)", () => {
     const base = `${runId}-fm`;
     const ids = [`${base}-1`, `${base}-2`, `${base}-3`];
     createdIds.push(...ids);
-    await adapter.create({ model: MODEL, data: { id: ids[0], name: "C", email: "c@e2e.test" } });
-    await adapter.create({ model: MODEL, data: { id: ids[1], name: "A", email: "a@e2e.test" } });
-    await adapter.create({ model: MODEL, data: { id: ids[2], name: "B", email: "b@e2e.test" } });
+    await adapter.create({
+      model: MODEL,
+      data: { id: ids[0], name: "C", email: "c@e2e.test" },
+    });
+    await adapter.create({
+      model: MODEL,
+      data: { id: ids[1], name: "A", email: "a@e2e.test" },
+    });
+    await adapter.create({
+      model: MODEL,
+      data: { id: ids[2], name: "B", email: "b@e2e.test" },
+    });
 
     const all = await adapter.findMany({
       model: MODEL,
@@ -210,7 +222,10 @@ describe.skipIf(!hasRealConfig)("athenaAdapter (real database e2e)", () => {
   it("findMany: where eq and in", async () => {
     const id = `${runId}-fmeq`;
     createdIds.push(id);
-    await adapter.create({ model: MODEL, data: { id, name: "Single", email: "single@e2e.test" } });
+    await adapter.create({
+      model: MODEL,
+      data: { id, name: "Single", email: "single@e2e.test" },
+    });
     const rows = await adapter.findMany({
       model: MODEL,
       where: [{ field: "name", operator: "eq", value: "Single" }],
@@ -223,7 +238,10 @@ describe.skipIf(!hasRealConfig)("athenaAdapter (real database e2e)", () => {
   it("update: updates one row", async () => {
     const id = `${runId}-upd`;
     createdIds.push(id);
-    await adapter.create({ model: MODEL, data: { id, name: "Old", email: "old@e2e.test" } });
+    await adapter.create({
+      model: MODEL,
+      data: { id, name: "Old", email: "old@e2e.test" },
+    });
     const updated = await adapter.update({
       model: MODEL,
       where: [{ field: "id", operator: "eq", value: id }],
@@ -244,8 +262,14 @@ describe.skipIf(!hasRealConfig)("athenaAdapter (real database e2e)", () => {
     const id1 = `${base}-1`;
     const id2 = `${base}-2`;
     createdIds.push(id1, id2);
-    await adapter.create({ model: MODEL, data: { id: id1, name: "UMA", email: "uma@e2e.test" } });
-    await adapter.create({ model: MODEL, data: { id: id2, name: "UMA", email: "umb@e2e.test" } });
+    await adapter.create({
+      model: MODEL,
+      data: { id: id1, name: "UMA", email: "uma@e2e.test" },
+    });
+    await adapter.create({
+      model: MODEL,
+      data: { id: id2, name: "UMA", email: "umb@e2e.test" },
+    });
     const n = await adapter.updateMany({
       model: MODEL,
       where: [{ field: "name", operator: "eq", value: "UMA" }],
@@ -266,8 +290,14 @@ describe.skipIf(!hasRealConfig)("athenaAdapter (real database e2e)", () => {
     const id1 = `${base}-1`;
     const id2 = `${base}-2`;
     createdIds.push(id1, id2);
-    await adapter.create({ model: MODEL, data: { id: id1, name: "CountA", email: "ca@e2e.test" } });
-    await adapter.create({ model: MODEL, data: { id: id2, name: "CountA", email: "cb@e2e.test" } });
+    await adapter.create({
+      model: MODEL,
+      data: { id: id1, name: "CountA", email: "ca@e2e.test" },
+    });
+    await adapter.create({
+      model: MODEL,
+      data: { id: id2, name: "CountA", email: "cb@e2e.test" },
+    });
 
     const n = await adapter.count({
       model: MODEL,
@@ -285,7 +315,10 @@ describe.skipIf(!hasRealConfig)("athenaAdapter (real database e2e)", () => {
   it("delete: removes one row", async () => {
     const id = `${runId}-del`;
     createdIds.push(id);
-    await adapter.create({ model: MODEL, data: { id, name: "ToDelete", email: "del@e2e.test" } });
+    await adapter.create({
+      model: MODEL,
+      data: { id, name: "ToDelete", email: "del@e2e.test" },
+    });
     await adapter.delete({
       model: MODEL,
       where: [{ field: "id", operator: "eq", value: id }],
@@ -305,8 +338,14 @@ describe.skipIf(!hasRealConfig)("athenaAdapter (real database e2e)", () => {
     const id1 = `${base}-1`;
     const id2 = `${base}-2`;
     createdIds.push(id1, id2);
-    await adapter.create({ model: MODEL, data: { id: id1, name: "DM1", email: "dm1@e2e.test" } });
-    await adapter.create({ model: MODEL, data: { id: id2, name: "DM2", email: "dm2@e2e.test" } });
+    await adapter.create({
+      model: MODEL,
+      data: { id: id1, name: "DM1", email: "dm1@e2e.test" },
+    });
+    await adapter.create({
+      model: MODEL,
+      data: { id: id2, name: "DM2", email: "dm2@e2e.test" },
+    });
     const n = await adapter.deleteMany({
       model: MODEL,
       where: [{ field: "id", operator: "in", value: [id1, id2] }],
