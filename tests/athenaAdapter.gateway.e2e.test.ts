@@ -3,8 +3,6 @@ import {
   type IncomingMessage,
   type ServerResponse,
 } from "node:http";
-import path from "node:path";
-import { pathToFileURL } from "node:url";
 import { beforeAll, afterAll, describe, expect, it, vi } from "vitest";
 
 // `bun test` doesn't provide `vi.hoisted`, but Vitest does.
@@ -24,20 +22,6 @@ const { createAdapterFactory } = vi.hoisted(() => {
 vi.mock("better-auth/adapters", () => ({
   createAdapterFactory,
 }));
-
-// Other test files may mock `@xylex-group/athena`.
-// For this gateway contract test we need the real athena client.
-vi.mock("@xylex-group/athena", async () => {
-  const distIndex = path.resolve(
-    process.cwd(),
-    "node_modules/@xylex-group/athena/dist/index.js",
-  );
-  const mod = await import(pathToFileURL(distIndex).href);
-  return {
-    ...mod,
-    createClient: mod.createClient,
-  };
-});
 
 let athenaAdapter: (typeof import("../src/index"))["athenaAdapter"] | null =
   null;
@@ -60,7 +44,14 @@ function readJsonBody(req: IncomingMessage): Promise<unknown> {
   });
 }
 
-describe("athenaAdapter (gateway contract e2e)", () => {
+const isBun = typeof process !== "undefined" && !!(process as any).env?.BUN_VERSION;
+
+// This test is a true HTTP contract check, but Bun's module-mocking behavior
+// differs from Vitest and can cause cross-file mock leakage.
+// We run it under Vitest (pnpm test), and skip under Bun.
+const contractDescribe = isBun ? describe.skip : describe;
+
+contractDescribe("athenaAdapter (gateway contract e2e)", () => {
   let server: ReturnType<typeof createServer> | null = null;
   let baseUrl = "";
   let lastUpdatePayload: any = null;
