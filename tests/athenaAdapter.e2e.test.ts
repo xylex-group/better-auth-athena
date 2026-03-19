@@ -34,6 +34,11 @@ type TestAdapter = {
     where: Array<{ field: string; operator: string; value: unknown }>;
     select?: string[];
   }) => Promise<Record<string, unknown> | null>;
+  updateMany: (args: {
+    model: string;
+    where: Array<{ field: string; operator: string; value: unknown }>;
+    update: Record<string, unknown>;
+  }) => Promise<number>;
 };
 
 const createBuilder = (result: BuilderResult) => {
@@ -47,6 +52,10 @@ const createBuilder = (result: BuilderResult) => {
     },
     insert: (data: unknown) => {
       calls.push({ method: "insert", args: [data] });
+      return builder;
+    },
+    update: (data: unknown) => {
+      calls.push({ method: "update", args: [data] });
       return builder;
     },
     limit: (value: number) => {
@@ -139,6 +148,34 @@ describe("athenaAdapter (e2e)", () => {
       expect.arrayContaining([
         { method: "select", args: ["id, user_id"] },
         { method: "eq", args: ["user_id", "u_1"] },
+      ]),
+    );
+  });
+
+  it("wraps updateMany payload in { set: ... }", async () => {
+    const builder = createBuilder({
+      data: [{ id: "row_1" }],
+      error: null,
+    });
+    const from = vi.fn(() => builder);
+    createClient.mockReturnValue({ from });
+
+    const adapter = athenaAdapter({
+      url: "https://mirror2.athena-db.com",
+      apiKey: "secret",
+    }) as unknown as TestAdapter;
+
+    await adapter.updateMany({
+      model: "account",
+      where: [{ field: "id", operator: "eq", value: "row_1" }],
+      update: { userId: "u_1" },
+    });
+
+    expect(builder.calls).toEqual(
+      expect.arrayContaining([
+        { method: "update", args: [{ set: { user_id: "u_1" } }] },
+        { method: "eq", args: ["id", "row_1"] },
+        { method: "select", args: [undefined] },
       ]),
     );
   });
