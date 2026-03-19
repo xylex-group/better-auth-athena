@@ -11,7 +11,7 @@
  * - Assumes `tests/fixtures/athena_adapter_e2e.sql` table exists.
  */
 
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 if (typeof (vi as any).hoisted !== "function") {
   (vi as any).hoisted = (fn: () => unknown) => fn();
@@ -54,6 +54,21 @@ const normalizeRows = (rows: any[]) =>
     email: r.email,
   }));
 
+const normalizeExtendedRow = (row: any) => ({
+  id: row?.id ?? null,
+  name: row?.name ?? null,
+  email: row?.email ?? null,
+  number: row?.number == null ? null : Number(row.number),
+  text: row?.text ?? null,
+  uuid: row?.uuid ?? null,
+  jsonb:
+    row?.jsonb == null
+      ? null
+      : typeof row.jsonb === "string"
+        ? JSON.parse(row.jsonb)
+        : row.jsonb,
+});
+
 describe("athena gateway diagnostics (real)", () => {
   if (!hasRealConfig) {
     it.skip("skipped: ATHENA_URL/ATHENA_API_KEY not set", () => {});
@@ -84,6 +99,12 @@ describe("athena gateway diagnostics (real)", () => {
   }) as any;
 
   const runId = `diag-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+
+  beforeEach(async () => {
+    // Force a clean table so each test is independent and decisive.
+    const purge = await direct.from(MODEL).delete();
+    expect(purge.error).toBeNull();
+  }, 20_000);
 
   it("findMany where+limit: gateway semantics vs adapter", async () => {
     const ids = [`${runId}-fm-1`, `${runId}-fm-2`, `${runId}-fm-3`];
@@ -183,6 +204,96 @@ describe("athena gateway diagnostics (real)", () => {
 
     expect(adapterUpdated).not.toBeNull();
     expect((adapterUpdated as any).name).toBe("AdapterNew");
+  }, 20_000);
+
+  it("extended columns: direct insert -> adapter read", async () => {
+    const id = `${runId}-ext-direct`;
+    const directPayload = {
+      id,
+      name: "ExtDirect",
+      email: "ext-direct@diag.test",
+      number: 42.5,
+      text: "hello-direct",
+      uuid: "11111111-1111-4111-8111-111111111111",
+      jsonb: { source: "direct", nested: { ok: true }, arr: [1, 2, 3] },
+    };
+
+    const ins = await direct.from(MODEL).insert(directPayload as any).select();
+    expect(ins.error).toBeNull();
+
+    const adapterRow = await adapter.findOne({
+      model: MODEL,
+      where: [{ field: "id", operator: "eq", value: id }],
+    });
+    expect(adapterRow).not.toBeNull();
+
+    expect(normalizeExtendedRow(adapterRow)).toEqual(
+      normalizeExtendedRow(directPayload),
+    );
+  }, 20_000);
+
+  it("extended columns: adapter insert -> direct read", async () => {
+    const id = `${runId}-ext-adapter`;
+    const adapterPayload = {
+      id,
+      name: "ExtAdapter",
+      email: "ext-adapter@diag.test",
+      number: 99.01,
+      text: "hello-adapter",
+      uuid: "22222222-2222-4222-8222-222222222222",
+      jsonb: { source: "adapter", nested: { ok: true }, arr: ["x", "y"] },
+    };
+
+    const created = await adapter.create({
+      model: MODEL,
+      data: adapterPayload,
+    });
+    expect(created).toBeDefined();
+
+    const directRowRes = await direct.from(MODEL).select().eq("id", id).limit(1);
+    expect(directRowRes.error).toBeNull();
+    const directRow = Array.isArray(directRowRes.data) ? directRowRes.data[0] : null;
+    expect(directRow).toBeTruthy();
+
+    expect(normalizeExtendedRow(directRow)).toEqual(
+      normalizeExtendedRow(adapterPayload),
+    );
+  }, 20_000);
+
+  it("extended columns: adapter update for number/text/jsonb", async () => {
+    const id = `${runId}-ext-update`;
+    await direct.from(MODEL).insert({
+      id,
+      name: "Before",
+      email: "before@diag.test",
+      number: 1,
+      text: "before",
+      uuid: "33333333-3333-4333-8333-333333333333",
+      jsonb: { stage: "before" },
+    } as any);
+
+    const updated = await adapter.update({
+      model: MODEL,
+      where: [{ field: "id", operator: "eq", value: id }],
+      update: {
+        number: 123.456,
+        text: "after",
+        jsonb: { stage: "after", flags: [true, false] },
+      },
+    });
+    expect(updated).not.toBeNull();
+
+    const directRowRes = await direct.from(MODEL).select().eq("id", id).limit(1);
+    expect(directRowRes.error).toBeNull();
+    const directRow = Array.isArray(directRowRes.data) ? directRowRes.data[0] : null;
+    expect(directRow).toBeTruthy();
+
+    expect(normalizeExtendedRow(directRow)).toMatchObject({
+      id,
+      number: 123.456,
+      text: "after",
+      jsonb: { stage: "after", flags: [true, false] },
+    });
   }, 20_000);
 });
 
