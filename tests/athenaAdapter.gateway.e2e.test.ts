@@ -44,7 +44,7 @@ function readJsonBody(req: IncomingMessage): Promise<unknown> {
   });
 }
 
-const isBun = typeof process !== "undefined" && !!(process as any).env?.BUN_VERSION;
+const isBun = typeof (globalThis as any).Bun !== "undefined";
 
 // This test is a true HTTP contract check, but Bun's module-mocking behavior
 // differs from Vitest and can cause cross-file mock leakage.
@@ -131,6 +131,7 @@ contractDescribe("athenaAdapter (gateway contract e2e)", () => {
     // { table_name, update_body, conditions, columns, ... }
     expect(lastUpdatePayload.table_name).toBe("account");
     expect(lastUpdatePayload.update_body).toEqual({
+      data: { user_id: "u_1" },
       set: { user_id: "u_1" },
     });
   });

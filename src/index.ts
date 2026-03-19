@@ -304,8 +304,9 @@ export const athenaAdapter = (
         }) => {
           const db = ensureDbClient();
           const updateData = toDbRecord(update as Record<string, unknown>);
-          // Athena gateway expects update_body to be wrapped in `{ set: ... }` (or `{ data: ... }`).
-          let builder = db.from(model).update({ set: updateData });
+          // Athena gateway expects update_body to include either `data` or `set`.
+          // Send both to be compatible with gateway implementations.
+          let builder = db.from(model).update({ data: updateData, set: updateData });
 
           for (const clause of where) {
             builder = applyWhere(
@@ -342,8 +343,9 @@ export const athenaAdapter = (
         }) => {
           const db = ensureDbClient();
           const updateData = toDbRecord(update);
-          // Athena gateway expects update_body to be wrapped in `{ set: ... }` (or `{ data: ... }`).
-          let builder = db.from(model).update({ set: updateData });
+          // Athena gateway expects update_body to include either `data` or `set`.
+          // Send both to be compatible with gateway implementations.
+          let builder = db.from(model).update({ data: updateData, set: updateData });
 
           for (const clause of where) {
             builder = applyWhere(

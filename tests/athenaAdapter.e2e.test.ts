@@ -152,7 +152,7 @@ describe("athenaAdapter (e2e)", () => {
     );
   });
 
-  it("wraps updateMany payload in { set: ... }", async () => {
+  it("wraps updateMany payload with data/set wrappers", async () => {
     const builder = createBuilder({
       data: [{ id: "row_1" }],
       error: null,
@@ -173,7 +173,7 @@ describe("athenaAdapter (e2e)", () => {
 
     expect(builder.calls).toEqual(
       expect.arrayContaining([
-        { method: "update", args: [{ set: { user_id: "u_1" } }] },
+        { method: "update", args: [{ data: { user_id: "u_1" }, set: { user_id: "u_1" } }] },
         { method: "eq", args: ["id", "row_1"] },
         { method: "select", args: [undefined] },
       ]),
