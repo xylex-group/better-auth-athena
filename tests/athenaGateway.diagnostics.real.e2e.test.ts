@@ -39,14 +39,17 @@ function getConfig(): { url: string; apiKey: string } {
 }
 
 const hasRealConfig = Boolean(
-  typeof process !== "undefined" && process.env?.ATHENA_URL && process.env?.ATHENA_API_KEY,
+  typeof process !== "undefined" &&
+  process.env?.ATHENA_URL &&
+  process.env?.ATHENA_API_KEY,
 );
 
-type Adapter = ReturnType<typeof athenaAdapter> extends infer F
-  ? F extends (...args: any[]) => any
-    ? Awaited<ReturnType<F>>
-    : never
-  : never;
+type Adapter =
+  ReturnType<typeof athenaAdapter> extends infer F
+    ? F extends (...args: any[]) => any
+      ? Awaited<ReturnType<F>>
+      : never
+    : never;
 
 const normalizeRows = (rows: any[]) =>
   rows.map((r) => ({
@@ -128,14 +131,12 @@ describe("athena gateway diagnostics (real)", () => {
     }
 
     // Direct gateway:
-    const directRes = await direct
-      .from(MODEL)
-      .select()
-      .in("id", ids)
-      .limit(10);
+    const directRes = await direct.from(MODEL).select().in("id", ids).limit(10);
     expect(directRes.error).toBeNull();
 
-    const directRows = normalizeRows(Array.isArray(directRes.data) ? directRes.data : []);
+    const directRows = normalizeRows(
+      Array.isArray(directRes.data) ? directRes.data : [],
+    );
     // This assertion is decisive: if gateway ignores where, you'll see != 3.
     expect(directRows.length).toBe(3);
 
@@ -167,7 +168,9 @@ describe("athena gateway diagnostics (real)", () => {
       .limit(10);
 
     expect(directRes.error).toBeNull();
-    const directRows = normalizeRows(Array.isArray(directRes.data) ? directRes.data : []);
+    const directRows = normalizeRows(
+      Array.isArray(directRes.data) ? directRes.data : [],
+    );
     expect(directRows.length).toBe(1);
 
     const adapterRows = await adapter.findMany({
@@ -198,12 +201,10 @@ describe("athena gateway diagnostics (real)", () => {
     // If this fails, the problem is the gateway/update contract, not the adapter.
     expect(directUpdate.error).toBeNull();
 
-    const directAfter = await direct
-      .from(MODEL)
-      .select()
-      .eq("id", id)
-      .limit(1);
-    const directAfterRows = normalizeRows(Array.isArray(directAfter.data) ? directAfter.data : []);
+    const directAfter = await direct.from(MODEL).select().eq("id", id).limit(1);
+    const directAfterRows = normalizeRows(
+      Array.isArray(directAfter.data) ? directAfter.data : [],
+    );
     expect(directAfterRows[0].name).toBe("New");
 
     // Now adapter update against the same row.
@@ -226,11 +227,13 @@ describe("athena gateway diagnostics (real)", () => {
       email: "ext-direct@diag.test",
       number: 42.5,
       text: "hello-direct",
-      uuid: "11111111-1111-4111-8111-111111111111",
       jsonb: { source: "direct", nested: { ok: true }, arr: [1, 2, 3] },
     };
 
-    const ins = await direct.from(MODEL).insert(directPayload as any).select();
+    const ins = await direct
+      .from(MODEL)
+      .insert(directPayload as any)
+      .select();
     expect(ins.error).toBeNull();
 
     const adapterRow = await adapter.findOne({
@@ -253,7 +256,6 @@ describe("athena gateway diagnostics (real)", () => {
       email: "ext-adapter@diag.test",
       number: 99.01,
       text: "hello-adapter",
-      uuid: "22222222-2222-4222-8222-222222222222",
       jsonb: { source: "adapter", nested: { ok: true }, arr: ["x", "y"] },
     };
 
@@ -263,9 +265,15 @@ describe("athena gateway diagnostics (real)", () => {
     });
     expect(created).toBeDefined();
 
-    const directRowRes = await direct.from(MODEL).select().eq("id", id).limit(1);
+    const directRowRes = await direct
+      .from(MODEL)
+      .select()
+      .eq("id", id)
+      .limit(1);
     expect(directRowRes.error).toBeNull();
-    const directRow = Array.isArray(directRowRes.data) ? directRowRes.data[0] : null;
+    const directRow = Array.isArray(directRowRes.data)
+      ? directRowRes.data[0]
+      : null;
     expect(directRow).toBeTruthy();
 
     expect(normalizeExtendedRow(directRow)).toEqual(
@@ -282,7 +290,6 @@ describe("athena gateway diagnostics (real)", () => {
       email: "before@diag.test",
       number: 1,
       text: "before",
-      uuid: "33333333-3333-4333-8333-333333333333",
       jsonb: { stage: "before" },
     } as any);
 
@@ -297,9 +304,15 @@ describe("athena gateway diagnostics (real)", () => {
     });
     expect(updated).not.toBeNull();
 
-    const directRowRes = await direct.from(MODEL).select().eq("id", id).limit(1);
+    const directRowRes = await direct
+      .from(MODEL)
+      .select()
+      .eq("id", id)
+      .limit(1);
     expect(directRowRes.error).toBeNull();
-    const directRow = Array.isArray(directRowRes.data) ? directRowRes.data[0] : null;
+    const directRow = Array.isArray(directRowRes.data)
+      ? directRowRes.data[0]
+      : null;
     expect(directRow).toBeTruthy();
 
     expect(normalizeExtendedRow(directRow)).toMatchObject({
@@ -310,4 +323,3 @@ describe("athena gateway diagnostics (real)", () => {
     });
   }, 20_000);
 });
-

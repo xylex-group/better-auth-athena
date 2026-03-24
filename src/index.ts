@@ -142,6 +142,7 @@ export const athenaAdapter = (
       supportsBooleans: true,
       supportsNumericIds: true,
       supportsUUIDs: true,
+      supportsArrays: true,
     },
     adapter: () => {
       return {
@@ -153,7 +154,14 @@ export const athenaAdapter = (
         findOne: findOneMethod(deps),
         findMany: findManyMethod(deps),
         count: countMethod(deps),
+        options: {
+          debugLogs: config.debugLogs ?? false,
+          
+        },
       };
     },
   });
 };
+
+// For testing purposes, we export the internal config function to allow resetting the cached client between tests.
+export { getAthenaGlobalConfig } from "./config";
