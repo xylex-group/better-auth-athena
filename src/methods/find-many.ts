@@ -15,6 +15,18 @@ export type FindManyDeps = {
 export function findManyMethod(deps: FindManyDeps) {
   const { ensureDbClient } = deps;
 
+  const isTransientGatewayError = (error: unknown): boolean => {
+    const message = String(error ?? "").toLowerCase();
+    return (
+      message.includes("application failed to respond") ||
+      message.includes("timeout") ||
+      message.includes("timed out") ||
+      message.includes("gateway timeout") ||
+      message.includes("econnreset") ||
+      message.includes("connection reset")
+    );
+  };
+
   return async function findMany<T>({
     model,
     where,
@@ -71,7 +83,12 @@ export function findManyMethod(deps: FindManyDeps) {
       return { result, error };
     };
 
-    const first = await run(snakeMapper);
+    let first = await run(snakeMapper);
+    if (first.error && isTransientGatewayError(first.error)) {
+      const retry = await run(snakeMapper);
+      if (!retry.error) first = retry;
+    }
+
     const pickRows = (res: unknown) =>
       (Array.isArray(res) ? res : []) as Record<string, unknown>[];
 

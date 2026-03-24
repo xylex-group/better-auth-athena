@@ -225,4 +225,35 @@ describe("athenaAdapter", () => {
       ]),
     );
   });
+
+  it("retries findMany once on transient gateway failure", async () => {
+    const firstBuilder = createBuilder({
+      data: null,
+      error: "Application failed to respond",
+    });
+    const secondBuilder = createBuilder({
+      data: [{ id: "1", name: "Ada" }],
+      error: null,
+    });
+
+    const from = vi
+      .fn()
+      .mockReturnValueOnce(firstBuilder)
+      .mockReturnValueOnce(secondBuilder);
+
+    createClient.mockReturnValue({ from });
+
+    const adapter = athenaAdapter({
+      url: "https://mirror1.athena-db.com",
+      apiKey: "secret",
+    }) as unknown as TestAdapter;
+
+    const result = await adapter.findMany({
+      model: "users",
+      limit: 10,
+    });
+
+    expect(from).toHaveBeenCalledTimes(2);
+    expect(result).toEqual([{ id: "1", name: "Ada" }]);
+  });
 });
