@@ -24,7 +24,7 @@ export function updateMethod(deps: UpdateDeps) {
   }) {
     const db = ensureDbClient();
     const updateData = toDbRecord(update as Record<string, unknown>);
-    const debugUpdates = process.env.ATHENA_ADAPTER_DEBUG_UPDATES === "1";
+    const debugUpdates = process?.env?.ATHENA_ADAPTER_DEBUG_UPDATES === "1";
     const debugLog = (event: string, extra?: Record<string, unknown>) => {
       if (!debugUpdates) return;
       console.info("[AthenaAdapter][update]", {
