@@ -184,7 +184,7 @@ describe("athenaAdapter", () => {
       expect.arrayContaining([
         {
           method: "update",
-          args: [{ data: { name: "Sam" }, set: { name: "Sam" } }],
+          args: [{ name: "Sam" }],
         },
         { method: "like", args: ["name", "%sam%"] },
         { method: "not", args: ["id", "in", ["1", "2"]] },

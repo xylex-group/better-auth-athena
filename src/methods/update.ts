@@ -24,22 +24,29 @@ export function updateMethod(deps: UpdateDeps) {
   }) {
     const db = ensureDbClient();
     const updateData = toDbRecord(update as Record<string, unknown>);
+    const debugUpdates = process.env.ATHENA_ADAPTER_DEBUG_UPDATES === "1";
+    const debugLog = (event: string, extra?: Record<string, unknown>) => {
+      if (!debugUpdates) return;
+      console.info("[AthenaAdapter][update]", {
+        event,
+        model,
+        ...extra,
+      });
+    };
     const build = (useRetryShape: boolean) => {
-      // Primary shape: some gateway versions accept back-compat update_body keys.
+      // Primary shape: modern gateway/client combinations accept plain update values.
       if (!useRetryShape) {
-        let b = db
-          .from(model)
-          .update({ data: updateData, set: updateData } as any) as AthenaFilterBuilder;
+        let b = db.from(model).update(updateData as any) as AthenaFilterBuilder;
         for (const clause of where) {
           b = applyWhere(b, clause.field, clause.operator, clause.value);
         }
         return b;
       }
 
-      // Retry shape: send the plain update values, but also provide an explicit `updateBody`.
+      // Retry shape: explicit wrappers for gateways expecting data/set.
       let b = db
         .from(model)
-        .update(updateData, {
+        .update(updateData as any, {
           updateBody: { data: updateData, set: updateData },
         } as any) as AthenaFilterBuilder;
       for (const clause of where) {
@@ -55,14 +62,17 @@ export function updateMethod(deps: UpdateDeps) {
 
     const first = await run(build(false));
     if (first.error && !isSuccessMessageInError(first.error)) {
+      debugLog("primary_failed", { error: String(first.error) });
       const msg = String(first.error);
       if (msg.toLowerCase().includes("update payload required")) {
         const retry = await run(build(true));
         if (retry.error && !isSuccessMessageInError(retry.error)) {
+          debugLog("retry_failed", { error: String(retry.error) });
           throw new Error(
             `[AthenaAdapter] update on "${model}" failed: ${retry.error}`,
           );
         }
+        debugLog("retry_succeeded", { shape: "updateBody(data/set)" });
         const row = Array.isArray(retry.result)
           ? (retry.result[0] as unknown)
           : (retry.result as unknown);
@@ -71,6 +81,8 @@ export function updateMethod(deps: UpdateDeps) {
 
       throw new Error(`[AthenaAdapter] update on "${model}" failed: ${first.error}`);
     }
+
+    debugLog("primary_succeeded", { shape: "plain" });
 
     const row = Array.isArray(first.result)
       ? (first.result[0] as unknown)
