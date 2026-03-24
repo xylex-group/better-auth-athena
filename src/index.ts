@@ -129,7 +129,28 @@ export const athenaAdapter = (
     return dbClient;
   }
 
-  const deps = { ensureDbClient, headers: config.headers };
+  function getConnectionConfig() {
+    if (shouldUseFixedConfig) {
+      return {
+        url: config.url!,
+        apiKey: config.apiKey!,
+        client: config.client,
+        headers: config.headers,
+      };
+    }
+    const { config: globalConfig } = getAthenaGlobalConfig({
+      configPath: config.configPath,
+      watch: false,
+    });
+    return {
+      url: config.url ?? globalConfig.athena.url,
+      apiKey: config.apiKey ?? globalConfig.athena.apiKey,
+      client: config.client ?? globalConfig.athena.client,
+      headers: config.headers,
+    };
+  }
+
+  const deps = { ensureDbClient, getConnectionConfig, headers: config.headers };
 
   return createAdapterFactory({
     config: {
@@ -156,7 +177,7 @@ export const athenaAdapter = (
         count: countMethod(deps),
         options: {
           debugLogs: config.debugLogs ?? false,
-          
+
         },
       };
     },
